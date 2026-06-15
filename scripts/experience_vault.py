@@ -50,7 +50,7 @@ SECRET_PATTERNS = [
     re.compile(r"AKIA[0-9A-Z]{16}"),
     re.compile(r"Bearer\s+\S{20,}", re.IGNORECASE),
     re.compile(r"-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----", re.IGNORECASE),
-    re.compile(r"\b(password|passwd|secret|token)\s*[=:]\s*\S+", re.IGNORECASE),
+    re.compile(r"\b(password|passwd|secret|token)\s*[=:]\s*[^\s<>`]+", re.IGNORECASE),
     re.compile(r"\b(OPENAI_API_KEY|ANTHROPIC_API_KEY|OPENROUTER_API_KEY|GITHUB_TOKEN|AWS_SECRET_ACCESS_KEY)\b"),
 ]
 
