@@ -1,0 +1,4 @@
+index/cache/
+*.tmp
+*.bak
+.DS_Store
