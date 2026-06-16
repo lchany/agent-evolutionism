@@ -20,6 +20,7 @@ Status: first release complete with P0/P1/P2/P2.5 plus distillation enhancements
 - `fail-track` command exists for repeated-failure counters and recall threshold guidance.
 - `review-turn` command exists for Hermes-inspired archive timing review.
 - `distill` command exists for Hermes-inspired archive classification and optional draft creation.
+- `ensure-latest` command and default pull behavior exist for multi-project shared-vault use.
 - Codex `experience-vault` skill exists at `/home/l30002999/.codex/skills/experience-vault`.
 - OpenSpec proposal exists at `/home/l30002999/spec/changes/add-experience-vault`.
 - User-level recall rule exists at `/root/.codex/AGENTS.md`.
