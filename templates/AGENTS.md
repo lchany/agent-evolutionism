@@ -1,4 +1,4 @@
-# Workspace Operating Rules
+# User Operating Rules
 
 ## Experience Vault
 
@@ -21,3 +21,9 @@ Classify retrieved records as directly applicable, partially applicable, or not 
 At meaningful project milestones or project close, archive reusable experience into the vault and push after validation and review.
 
 Never store passwords, API keys, tokens, private keys, raw auth files, or dense sensitive logs in Experience Vault.
+
+## Python Code Review
+
+After writing or modifying Python scripts, perform a code-review pass before finalizing the task.
+Prioritize correctness bugs, edge cases, error handling, maintainability, and missing tests.
+Report any findings with file and line references; if no issues are found, say so and note any test coverage gaps.

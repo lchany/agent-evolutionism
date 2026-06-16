@@ -1,6 +1,6 @@
-# Workspace Automation
+# User-Level Automation
 
-The active workspace uses `/home/l30002999/AGENTS.md` to make Experience Vault recall a default Codex behavior.
+The active Codex user uses `/root/.codex/AGENTS.md` to make Experience Vault recall a default behavior across workspaces.
 
 ## Default Recall
 
@@ -20,14 +20,15 @@ python /home/l30002999/experience-vault/scripts/experience_vault.py search --mod
 
 ## Restore On A New Machine
 
-After cloning the vault, copy the workspace rule if this checkout should control the workspace:
+After cloning the vault, copy the user-level rule for the Codex runtime user:
 
 ```bash
-cp /home/l30002999/experience-vault/templates/AGENTS.md /home/l30002999/AGENTS.md
+mkdir -p /root/.codex
+cp /home/l30002999/experience-vault/templates/AGENTS.md /root/.codex/AGENTS.md
 ```
 
 Then adjust paths if the vault checkout is not `/home/l30002999/experience-vault`.
 
 ## Limitation
 
-This is semi-automatic. Codex can follow the workspace rule when the workspace instructions are loaded, but it is not a background daemon and cannot intercept shell failures outside a Codex turn.
+This is semi-automatic. Codex can follow the user-level rule when user instructions are loaded, but it is not a background daemon and cannot intercept shell failures outside a Codex turn.
