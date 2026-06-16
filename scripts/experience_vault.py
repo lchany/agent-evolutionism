@@ -44,6 +44,131 @@ TEMPLATE_BY_TYPE = {
     "runbook": ("templates/runbook.md", "runbooks"),
 }
 
+DISTILL_RECORD_TYPES = ["project", "incident", "knowledge", "runbook"]
+
+DISTILL_RULES = {
+    "project": {
+        "label": "Project Archive",
+        "classification": "project-specific",
+        "destination": "projects/",
+        "signals": [
+            "project",
+            "repo",
+            "repository",
+            "path",
+            "environment",
+            "milestone",
+            "deliverable",
+            "final solution",
+            "scope",
+            "项目",
+            "仓库",
+            "路径",
+            "环境",
+            "交付",
+            "完成",
+        ],
+        "description": "Current-project goals, environment, timeline, decisions, verification, and residual risks.",
+    },
+    "incident": {
+        "label": "Incident Candidate",
+        "classification": "reusable-incident",
+        "destination": "incidents/",
+        "signals": [
+            "error",
+            "failure",
+            "failed",
+            "exception",
+            "traceback",
+            "permission denied",
+            "publickey",
+            "root cause",
+            "resolution",
+            "fix",
+            "retry",
+            "错误",
+            "失败",
+            "报错",
+            "根因",
+            "修复",
+            "解决",
+        ],
+        "description": "Reusable failure with trigger, signature, root cause, resolution, verification, and non-applicable cases.",
+    },
+    "knowledge": {
+        "label": "Knowledge Candidate",
+        "classification": "general-knowledge",
+        "destination": "knowledge/",
+        "signals": [
+            "reusable",
+            "lesson",
+            "knowledge",
+            "best practice",
+            "avoid",
+            "should",
+            "general",
+            "portable",
+            "across projects",
+            "multiple projects",
+            "next time",
+            "复用",
+            "经验",
+            "知识",
+            "通用",
+            "原则",
+            "下次",
+            "避免",
+        ],
+        "description": "Cross-project lesson with applicability, trigger signals, required inputs, procedure, and boundaries.",
+    },
+    "runbook": {
+        "label": "Runbook Candidate",
+        "classification": "runbook-candidate",
+        "destination": "runbooks/",
+        "signals": [
+            "runbook",
+            "workflow",
+            "procedure",
+            "checklist",
+            "step",
+            "steps",
+            "validate",
+            "verification",
+            "repeatable",
+            "流程",
+            "步骤",
+            "检查",
+            "验证",
+            "可重复",
+            "操作手册",
+        ],
+        "description": "Repeatable procedure with inputs, ordered steps, validation, and failure handling.",
+    },
+    "skill": {
+        "label": "Skill Candidate",
+        "classification": "skill-candidate",
+        "destination": "skill-candidates/",
+        "signals": [
+            "skill",
+            "trigger",
+            "inputs",
+            "outputs",
+            "safety",
+            "class-level",
+            "multiple projects",
+            "promote",
+            "技能",
+            "触发",
+            "输入",
+            "输出",
+            "安全",
+            "多次",
+            "升级",
+        ],
+        "description": "Class-level task capability. Prefer updating an existing umbrella before creating a new skill candidate.",
+    },
+}
+
 USER_AGENTS_PATH = Path("/root/.codex/AGENTS.md")
 ACTIVE_SKILL_PATH = Path("/home/l30002999/.codex/skills/experience-vault/SKILL.md")
 FAILURE_STATE_PATH = ROOT / "index" / "failure_attempts.json"
@@ -134,9 +259,16 @@ def detect_domains(text: str) -> list[str]:
     lower = text.lower()
     domains: list[str] = []
     for domain, keywords in DOMAIN_KEYWORDS.items():
-        if any(keyword in lower for keyword in keywords):
+        if any(matches_signal(lower, keyword) for keyword in keywords):
             domains.append(domain)
     return domains
+
+
+def matches_signal(lower_text: str, signal: str) -> bool:
+    lower_signal = signal.lower()
+    if " " in lower_signal or not lower_signal.isascii():
+        return lower_signal in lower_text
+    return re.search(rf"\b{re.escape(lower_signal)}\b", lower_text) is not None
 
 
 def iter_markdown(dirs: list[str]) -> list[Path]:
@@ -457,12 +589,191 @@ def command_review_turn(args: argparse.Namespace) -> int:
 
     title = args.title or "Turn Review Followup"
     print("\n## Draft Commands")
+    print(f"python scripts/experience_vault.py distill --title {shell_quote(title)} --source '<paste summary or file path>'")
     if args.failed or args.error_text or args.incident_recall:
         print(f"python scripts/experience_vault.py archive --title {shell_quote(title)} --type incident")
     if any("knowledge" in r for r in recommendations):
         print(f"python scripts/experience_vault.py archive --title {shell_quote(title)} --type knowledge")
     if any("project" in r or "checkpoint" in r for r in recommendations):
         print(f"python scripts/experience_vault.py archive --title {shell_quote(title)} --type project")
+    return 0
+
+
+def read_distill_source(args: argparse.Namespace) -> str:
+    parts: list[str] = []
+    if args.file:
+        parts.append(Path(args.file).read_text(encoding="utf-8", errors="ignore"))
+    if args.source:
+        source = args.source
+        if "\n" not in source and len(source) < 240:
+            candidate = Path(source)
+            if candidate.exists() and candidate.is_file():
+                parts.append(candidate.read_text(encoding="utf-8", errors="ignore"))
+            else:
+                parts.append(source)
+        else:
+            parts.append(source)
+    text = "\n".join(part for part in parts if part)
+    return redact_text(text)
+
+
+def score_distill_categories(text: str) -> dict[str, int]:
+    lower = text.lower()
+    scores: dict[str, int] = {}
+    for record_type, rule in DISTILL_RULES.items():
+        score = 0
+        for signal in rule["signals"]:
+            if matches_signal(lower, signal):
+                score += 2 if " " in signal else 1
+        scores[record_type] = score
+
+    if text.strip():
+        # Preserve project archiving as the default durable source of truth.
+        scores["project"] = max(scores["project"], 1)
+    if scores["incident"] >= 2 and scores["knowledge"] >= 2:
+        scores["knowledge"] += 1
+    if scores["runbook"] >= 3 and scores["knowledge"] >= 2:
+        scores["runbook"] += 1
+    if scores["skill"] >= 2 and (scores["runbook"] >= 2 or scores["knowledge"] >= 3):
+        scores["skill"] += 1
+    return scores
+
+
+def distill_decisions(scores: dict[str, int]) -> dict[str, str]:
+    decisions: dict[str, str] = {}
+    for record_type, score in scores.items():
+        if record_type == "project":
+            decisions[record_type] = "recommended" if score >= 1 else "skip"
+        elif record_type == "incident":
+            decisions[record_type] = "recommended" if score >= 3 else "skip"
+        elif record_type == "runbook":
+            decisions[record_type] = "recommended" if score >= 3 else "skip"
+        elif record_type == "skill":
+            decisions[record_type] = "consider" if score >= 3 else "skip"
+        else:
+            decisions[record_type] = "recommended" if score >= 2 else "skip"
+    return decisions
+
+
+def extract_distill_evidence(text: str, signals: list[str], limit: int = 5) -> list[str]:
+    evidence: list[str] = []
+    for line in text.splitlines():
+        clean = line.strip().strip("-* ")
+        if len(clean) < 4:
+            continue
+        lower = clean.lower()
+        if any(matches_signal(lower, signal) for signal in signals):
+            evidence.append(clean[:220])
+        if len(evidence) >= limit:
+            break
+    return evidence
+
+
+def create_archive_drafts(
+    record_types: list[str],
+    title: str,
+    slug: str | None,
+    force: bool,
+    distill_note: str = "",
+) -> list[Path]:
+    created: list[Path] = []
+    for record_type in record_types:
+        template_path, output_dir = TEMPLATE_BY_TYPE[record_type]
+        template = (ROOT / template_path).read_text(encoding="utf-8")
+        output_slug = slug or slugify(title)
+        output = ROOT / output_dir / f"{date.today().isoformat()}-{output_slug}.md"
+        if output.exists() and not force:
+            raise FileExistsError(str(output))
+        content = render_template(template, title)
+        if distill_note:
+            content = content.rstrip() + "\n\n## Distill Guidance\n\n" + distill_note.rstrip() + "\n"
+        output.write_text(content, encoding="utf-8")
+        created.append(output)
+    return created
+
+
+def command_distill(args: argparse.Namespace) -> int:
+    text = read_distill_source(args)
+    if not tokenize(text):
+        print("No distillable source provided.", file=sys.stderr)
+        return 2
+    if has_secret(text):
+        print("Source contains potential secrets after redaction. Refusing to distill.", file=sys.stderr)
+        return 1
+
+    domains = detect_domains(text)
+    scores = score_distill_categories(text)
+    decisions = distill_decisions(scores)
+    selected = [
+        record_type
+        for record_type in DISTILL_RECORD_TYPES
+        if decisions[record_type] == "recommended"
+    ]
+
+    print("# Distill Review")
+    print(f"- title: {args.title}")
+    print(f"- domains: {', '.join(domains) if domains else 'unknown'}")
+    print(f"- source_terms: {len(tokenize(text))}")
+    print("\n## Classification")
+
+    for record_type in ["project", "incident", "knowledge", "runbook", "skill"]:
+        rule = DISTILL_RULES[record_type]
+        decision = decisions[record_type]
+        print(f"- {rule['label']}: {decision}")
+        print(f"  classification: {rule['classification']}")
+        print(f"  destination: {rule['destination']}")
+        print(f"  score: {scores[record_type]}")
+        print(f"  use_for: {rule['description']}")
+        evidence = extract_distill_evidence(text, rule["signals"], limit=3)
+        if evidence:
+            print(f"  evidence: {' | '.join(evidence)}")
+
+    print("\n## Hermes-Style Rules Applied")
+    print("- Keep project-specific context in projects/ instead of polluting generic knowledge.")
+    print("- Promote portable lessons to knowledge/ only when they can transfer across projects.")
+    print("- Promote procedures to runbooks/ only when the sequence is repeatable and verifiable.")
+    print("- Treat skill-candidates/ as class-level capabilities, not one-off project summaries.")
+    print("- Record environment failures as fixes or setup steps, not permanent tool limitations.")
+
+    print("\n## Suggested Commands")
+    if selected:
+        types = " ".join(f"--type {record_type}" for record_type in selected)
+        print(f"python scripts/experience_vault.py archive --title {shell_quote(args.title)} {types}")
+    if decisions["skill"] == "consider":
+        skill_slug = slugify(args.title)
+        print(f"mkdir -p skill-candidates/{shell_quote(skill_slug)}")
+        print(f"cp templates/skill-candidate-SKILL.md skill-candidates/{shell_quote(skill_slug)}/SKILL.md")
+    if not selected and decisions["skill"] != "consider":
+        print("# No durable archive recommended; keep this in session history only.")
+
+    if args.create_drafts:
+        if not selected:
+            print("\nNo archive drafts created because no record type was recommended.")
+            return 0
+        guidance_lines = [
+            f"- Distill classification: {DISTILL_RULES[record_type]['classification']} -> {DISTILL_RULES[record_type]['destination']}"
+            for record_type in selected
+        ]
+        if domains:
+            guidance_lines.append(f"- Suggested domains: {', '.join(domains)}")
+        try:
+            created = create_archive_drafts(
+                selected,
+                args.title,
+                args.slug,
+                args.force,
+                "\n".join(guidance_lines),
+            )
+        except FileExistsError as exc:
+            print(f"Refusing to overwrite existing file: {exc}", file=sys.stderr)
+            return 2
+        print("\n## Created Drafts")
+        for path in created:
+            print(f"- {path.relative_to(ROOT)}")
+        print("\nNext steps:")
+        print("- Fill in the draft sections with verified facts.")
+        print("- Run: python scripts/experience_vault.py validate")
+        print("- Run: python scripts/experience_vault.py sync --message \"Archive <topic>\"")
     return 0
 
 
@@ -490,17 +801,11 @@ def command_new(args: argparse.Namespace) -> int:
 
 
 def command_archive(args: argparse.Namespace) -> int:
-    created: list[Path] = []
-    for record_type in args.type:
-        template_path, output_dir = TEMPLATE_BY_TYPE[record_type]
-        template = (ROOT / template_path).read_text(encoding="utf-8")
-        slug = args.slug or slugify(args.title)
-        output = ROOT / output_dir / f"{date.today().isoformat()}-{slug}.md"
-        if output.exists() and not args.force:
-            print(f"Refusing to overwrite existing file: {output}", file=sys.stderr)
-            return 2
-        output.write_text(render_template(template, args.title), encoding="utf-8")
-        created.append(output)
+    try:
+        created = create_archive_drafts(args.type, args.title, args.slug, args.force)
+    except FileExistsError as exc:
+        print(f"Refusing to overwrite existing file: {exc}", file=sys.stderr)
+        return 2
 
     print("Created archive draft(s):")
     for path in created:
@@ -717,6 +1022,15 @@ def build_parser() -> argparse.ArgumentParser:
     review_turn.add_argument("--incident-recall", action="store_true")
     review_turn.add_argument("--reset", action="store_true")
     review_turn.set_defaults(func=command_review_turn)
+
+    distill = sub.add_parser("distill", help="Classify a project summary into archive destinations")
+    distill.add_argument("--title", required=True)
+    distill.add_argument("--source", help="Source text or a path to a source file")
+    distill.add_argument("--file", help="Path to a source file")
+    distill.add_argument("--slug")
+    distill.add_argument("--create-drafts", action="store_true", help="Create recommended archive drafts")
+    distill.add_argument("--force", action="store_true")
+    distill.set_defaults(func=command_distill)
 
     new = sub.add_parser("new", help="Create a record from a template")
     new.add_argument("--type", choices=sorted(TEMPLATE_BY_TYPE), required=True)

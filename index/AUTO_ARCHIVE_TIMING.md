@@ -54,10 +54,22 @@ python scripts/experience_vault.py review-turn \
 
 ## Archive Decision
 
+Use `review-turn` to decide whether archiving is worth considering. Use `distill` to decide where the knowledge belongs:
+
+```bash
+python scripts/experience_vault.py distill \
+  --title "<archive title>" \
+  --source "<project summary, incident outcome, or reusable lesson>"
+```
+
 Create an `incident` when the work diagnosed or resolved a reusable failure.
 
 Create `knowledge` when the lesson applies beyond one task.
 
 Create a `project` checkpoint when a milestone completed or a workflow changed materially.
+
+Create a `runbook` when the lesson is already a repeatable procedure with validation.
+
+Consider `skill-candidates/` only for class-level capabilities with triggers, inputs, outputs, and safety boundaries. Do not promote one-off project details directly into skills.
 
 Do not archive raw secrets, private keys, tokens, passwords, auth files, or dense sensitive logs.

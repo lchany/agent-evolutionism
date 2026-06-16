@@ -93,6 +93,23 @@ python scripts/experience_vault.py review-turn \
   --title "GitHub SSH push followup"
 ```
 
+Classify a summary into archive destinations:
+
+```bash
+python scripts/experience_vault.py distill \
+  --title "GitHub SSH push followup" \
+  --source "Fixed GitHub SSH push failure. Root cause was missing SSH public key. This is reusable for future GitHub push incidents."
+```
+
+Create recommended archive drafts from the distill result:
+
+```bash
+python scripts/experience_vault.py distill \
+  --title "GitHub SSH push followup" \
+  --file /tmp/work-summary.md \
+  --create-drafts
+```
+
 Create a record from a template:
 
 ```bash

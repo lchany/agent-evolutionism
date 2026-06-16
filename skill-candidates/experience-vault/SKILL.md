@@ -120,12 +120,11 @@ Steps:
 
 1. Pull latest vault if a remote is configured.
 2. Run `review-turn` if the archive need is not already explicit.
-3. Create a project archive from `templates/project.md`.
-4. Create incident records for reusable failures.
-5. Create knowledge cards for reusable lessons.
-6. Validate the vault.
-7. Show generated files and Git diff/status.
-8. Commit and push only after user approval.
+3. Run `distill` on the work summary to classify project-specific context, incidents, knowledge, runbooks, and skill candidates.
+4. Create only the recommended archive drafts.
+5. Validate the vault.
+6. Show generated files and Git diff/status.
+7. Commit and push only after user approval.
 
 Commands:
 
@@ -134,6 +133,10 @@ python /home/l30002999/experience-vault/scripts/experience_vault.py review-turn 
   --user-message "<latest user message>" \
   --assistant-summary "<work summary>" \
   --title "<archive title>"
+
+python /home/l30002999/experience-vault/scripts/experience_vault.py distill \
+  --title "<archive title>" \
+  --source "<work summary, incident outcome, or source file path>"
 
 python /home/l30002999/experience-vault/scripts/experience_vault.py new \
   --type project \
@@ -163,6 +166,7 @@ Rules:
 - Promote to `knowledge/` when a lesson is reusable.
 - Promote to `runbooks/` when the procedure is repeatable and has clear boundaries.
 - Promote to `skill-candidates/` only after triggers, inputs, outputs, safety rules, and validation are clear.
+- Keep project-specific details in `projects/`; do not promote one-off project facts into generic knowledge or skills.
 - Use EvoSkill only for candidate generation from mature runbooks and representative examples.
 - Use GEPA/DSPy only for optimizing stable official `SKILL.md` files with eval datasets.
 - Never install or replace active Codex skills without explicit user approval.
