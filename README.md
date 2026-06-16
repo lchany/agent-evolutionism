@@ -58,6 +58,41 @@ Recall with applicability grouping:
 python scripts/experience_vault.py recall --query "github ssh permission denied publickey push" --mode incident
 ```
 
+Build an incident fingerprint and recall query from a failure:
+
+```bash
+python scripts/experience_vault.py fingerprint \
+  --objective "push vault changes" \
+  --command "git push" \
+  --exit-code 128 \
+  --error-text "Permission denied (publickey)."
+```
+
+Detect domain tags from a task, error, or summary:
+
+```bash
+python scripts/experience_vault.py domain-hints --text "VERL rollout reward drift NPU profiling"
+```
+
+Track repeated failures and trigger incident recall after the threshold:
+
+```bash
+python scripts/experience_vault.py fail-track \
+  --objective "push vault changes" \
+  --command "git push" \
+  --error-text "Permission denied (publickey)."
+```
+
+Review whether the latest turn should be archived:
+
+```bash
+python scripts/experience_vault.py review-turn \
+  --user-message "fix GitHub SSH push" \
+  --assistant-summary "resolved and verified" \
+  --incident-recall \
+  --title "GitHub SSH push followup"
+```
+
 Create a record from a template:
 
 ```bash

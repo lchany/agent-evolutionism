@@ -1,0 +1,63 @@
+# Auto Archive Timing
+
+This vault does not run a background daemon. Codex uses explicit helper commands plus user-level `AGENTS.md` rules to make recall and archive timing semi-automatic during normal work.
+
+The design is inspired by Hermes-style turn review:
+
+1. Track failure and turn signals while work is in progress.
+2. Stop repeated blind retries.
+3. Recall prior incidents when the failure fingerprint crosses a threshold.
+4. Recommend archive drafts when a milestone, reusable lesson, or resolved incident appears.
+
+## In-Progress Recall
+
+Use `fingerprint` when a failure has enough context to describe:
+
+```bash
+python scripts/experience_vault.py fingerprint \
+  --objective "<current objective>" \
+  --command "<failed command>" \
+  --exit-code "<exit code>" \
+  --error-text "<key error lines>"
+```
+
+Use `fail-track` after related failures. The default threshold is `2`, which means the second similar failure recommends incident recall:
+
+```bash
+python scripts/experience_vault.py fail-track \
+  --objective "<current objective>" \
+  --command "<failed command>" \
+  --error-text "<key error lines>"
+```
+
+When the threshold is reached, stop exploratory retries and run the suggested `recall --mode incident` command.
+
+## Archive Review
+
+Use `review-turn` after meaningful turns, especially after failures, fixes, verification, or user corrections:
+
+```bash
+python scripts/experience_vault.py review-turn \
+  --user-message "<latest user message>" \
+  --assistant-summary "<what changed or was learned>" \
+  --title "<archive title>"
+```
+
+`review-turn` recommends archive drafts when it sees any of these signals:
+
+- Turn interval reached, default `5` turns.
+- A failure or error was observed.
+- Incident recall was used.
+- Completion or verification words appear.
+- Reusable-knowledge words appear.
+- Domain hints are detected, such as GitHub, SSH, Docker, NPU/Ascend, MindSpeed, VERL, profiling, or Python.
+
+## Archive Decision
+
+Create an `incident` when the work diagnosed or resolved a reusable failure.
+
+Create `knowledge` when the lesson applies beyond one task.
+
+Create a `project` checkpoint when a milestone completed or a workflow changed materially.
+
+Do not archive raw secrets, private keys, tokens, passwords, auth files, or dense sensitive logs.

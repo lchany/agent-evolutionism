@@ -93,23 +93,48 @@ python /home/l30002999/experience-vault/scripts/experience_vault.py search \
   --query "<error command framework keywords>"
 ```
 
+If a concrete command failed, first build a sanitized fingerprint and use its suggested query:
+
+```bash
+python /home/l30002999/experience-vault/scripts/experience_vault.py fingerprint \
+  --objective "<current objective>" \
+  --command "<failed command>" \
+  --exit-code "<exit code>" \
+  --error-text "<key error lines>"
+```
+
+For repeated related failures, track attempts. When the threshold is reached, stop exploratory retries and run the suggested incident recall:
+
+```bash
+python /home/l30002999/experience-vault/scripts/experience_vault.py fail-track \
+  --objective "<current objective>" \
+  --command "<failed command>" \
+  --error-text "<key error lines>"
+```
+
 ### 3. Project Close Archive
 
-Use when the user asks to archive, summarize, learn from, or close a project.
+Use when the user asks to archive, summarize, learn from, or close a project. Also use after meaningful milestones, verified fixes, incident recall outcomes, or reusable lessons.
 
 Steps:
 
 1. Pull latest vault if a remote is configured.
-2. Create a project archive from `templates/project.md`.
-3. Create incident records for reusable failures.
-4. Create knowledge cards for reusable lessons.
-5. Validate the vault.
-6. Show generated files and Git diff/status.
-7. Commit and push only after user approval.
+2. Run `review-turn` if the archive need is not already explicit.
+3. Create a project archive from `templates/project.md`.
+4. Create incident records for reusable failures.
+5. Create knowledge cards for reusable lessons.
+6. Validate the vault.
+7. Show generated files and Git diff/status.
+8. Commit and push only after user approval.
 
 Commands:
 
 ```bash
+python /home/l30002999/experience-vault/scripts/experience_vault.py review-turn \
+  --user-message "<latest user message>" \
+  --assistant-summary "<work summary>" \
+  --title "<archive title>"
+
 python /home/l30002999/experience-vault/scripts/experience_vault.py new \
   --type project \
   --title "<project title>"

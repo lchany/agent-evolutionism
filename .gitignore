@@ -1,4 +1,6 @@
 index/cache/
+index/failure_attempts.json
+index/review_state.json
 __pycache__/
 *.pyc
 *.tmp

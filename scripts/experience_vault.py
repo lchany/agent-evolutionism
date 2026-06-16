@@ -8,7 +8,9 @@ Markdown search, template creation, validation, and Git status helpers.
 from __future__ import annotations
 
 import argparse
+import json
 import re
+import shlex
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -44,6 +46,19 @@ TEMPLATE_BY_TYPE = {
 
 USER_AGENTS_PATH = Path("/root/.codex/AGENTS.md")
 ACTIVE_SKILL_PATH = Path("/home/l30002999/.codex/skills/experience-vault/SKILL.md")
+FAILURE_STATE_PATH = ROOT / "index" / "failure_attempts.json"
+REVIEW_STATE_PATH = ROOT / "index" / "review_state.json"
+
+DOMAIN_KEYWORDS = {
+    "git-github": ["git", "github", "push", "pull", "remote", "branch", "publickey", "permission denied"],
+    "ssh": ["ssh", "scp", "publickey", "known_hosts", "permission denied", "connection refused"],
+    "docker": ["docker", "container", "image", "volume", "mount", "registry"],
+    "npu-ascend": ["npu", "ascend", "cann", "torch_npu", "npu-smi", "hccl"],
+    "mindspeed": ["mindspeed", "megatron", "llm", "pretrain", "finetune"],
+    "verl": ["verl", "ppo", "grpo", "rollout", "reward", "ray"],
+    "profiling": ["profiling", "profiler", "trace", "step_trace", "op_statistic", "slow rank"],
+    "python": ["python", "pytest", "pip", "venv", "traceback", "modulenotfounderror"],
+}
 
 SECRET_PATTERNS = [
     re.compile(r"sk-[A-Za-z0-9_\-]{20,}"),
@@ -78,6 +93,10 @@ def tokenize(text: str) -> list[str]:
     return [t for t in re.split(r"[^A-Za-z0-9\u4e00-\u9fff]+", text.lower()) if len(t) >= 2]
 
 
+def shell_quote(text: object) -> str:
+    return shlex.quote(str(text))
+
+
 def parse_frontmatter(text: str) -> dict[str, str]:
     if not text.startswith("---"):
         return {}
@@ -95,6 +114,29 @@ def parse_frontmatter(text: str) -> dict[str, str]:
 
 def has_secret(text: str) -> bool:
     return any(pattern.search(text) for pattern in SECRET_PATTERNS)
+
+
+def redact_text(text: str) -> str:
+    redacted = text
+    replacements = [
+        (re.compile(r"sk-[A-Za-z0-9_\-]{20,}"), "<API_KEY>"),
+        (re.compile(r"gh[pousr]_[A-Za-z0-9_]{20,}"), "<TOKEN>"),
+        (re.compile(r"Bearer\s+\S{20,}", re.IGNORECASE), "Bearer <TOKEN>"),
+        (re.compile(r"\b(password|passwd)\s*[=:]\s*[^\s<>`]+", re.IGNORECASE), r"\1=<PASSWORD>"),
+        (re.compile(r"\b(secret|token)\s*[=:]\s*[^\s<>`]+", re.IGNORECASE), r"\1=<TOKEN>"),
+    ]
+    for pattern, replacement in replacements:
+        redacted = pattern.sub(replacement, redacted)
+    return redacted
+
+
+def detect_domains(text: str) -> list[str]:
+    lower = text.lower()
+    domains: list[str] = []
+    for domain, keywords in DOMAIN_KEYWORDS.items():
+        if any(keyword in lower for keyword in keywords):
+            domains.append(domain)
+    return domains
 
 
 def iter_markdown(dirs: list[str]) -> list[Path]:
@@ -214,6 +256,213 @@ def command_recall(args: argparse.Namespace) -> int:
         print("\nNext action: adapt only the reusable parts from partial matches.")
     else:
         print("\nNext action: do not reuse these records; proceed normally and archive new evidence if useful.")
+    return 0
+
+
+def build_fingerprint(args: argparse.Namespace) -> dict[str, object]:
+    error_text = args.error_text or ""
+    if args.error_file:
+        error_text += "\n" + Path(args.error_file).read_text(encoding="utf-8", errors="ignore")
+    raw = "\n".join(
+        part
+        for part in [
+            args.objective or "",
+            args.command or "",
+            str(args.exit_code) if args.exit_code is not None else "",
+            error_text,
+            args.context or "",
+        ]
+        if part
+    )
+    redacted = redact_text(raw)
+    domains = detect_domains(redacted)
+    query_parts = domains + tokenize(redacted)[:30]
+    seen: set[str] = set()
+    query = " ".join(part for part in query_parts if not (part in seen or seen.add(part)))
+    return {
+        "objective": redact_text(args.objective or ""),
+        "command": redact_text(args.command or ""),
+        "exit_code": args.exit_code,
+        "context": redact_text(args.context or ""),
+        "error_excerpt": "\n".join(redact_text(error_text).splitlines()[:20]),
+        "domains": domains,
+        "recall_query": query,
+    }
+
+
+def command_fingerprint(args: argparse.Namespace) -> int:
+    fp = build_fingerprint(args)
+    print("# Incident Fingerprint")
+    print()
+    for key in ["objective", "command", "exit_code", "context"]:
+        value = fp.get(key)
+        if value not in {None, ""}:
+            print(f"- {key}: {value}")
+    print(f"- domains: {', '.join(fp['domains']) if fp['domains'] else 'unknown'}")
+    if fp.get("error_excerpt"):
+        print("\n## Error Excerpt")
+        print("```text")
+        print(fp["error_excerpt"])
+        print("```")
+    print("\n## Suggested Recall")
+    print("```bash")
+    print(f"python scripts/experience_vault.py recall --mode incident --query {shell_quote(fp['recall_query'])}")
+    print("```")
+    return 0
+
+
+def command_domain_hints(args: argparse.Namespace) -> int:
+    text = args.text or ""
+    if args.file:
+        text += "\n" + Path(args.file).read_text(encoding="utf-8", errors="ignore")
+    domains = detect_domains(redact_text(text))
+    if not domains:
+        print("No domain hints detected.")
+        return 0
+    print("Detected domains:")
+    for domain in domains:
+        print(f"- {domain}: {', '.join(DOMAIN_KEYWORDS[domain])}")
+    return 0
+
+
+def load_failure_state() -> dict[str, dict[str, object]]:
+    if not FAILURE_STATE_PATH.exists():
+        return {}
+    try:
+        return json.loads(FAILURE_STATE_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+
+
+def save_failure_state(state: dict[str, dict[str, object]]) -> None:
+    FAILURE_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    FAILURE_STATE_PATH.write_text(json.dumps(state, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def command_fail_track(args: argparse.Namespace) -> int:
+    key = args.key or slugify(" ".join(part for part in [args.objective or "", args.command or ""] if part))
+    state = load_failure_state()
+    if args.reset:
+        if key in state:
+            del state[key]
+            save_failure_state(state)
+        print(f"Reset failure counter: {key}")
+        return 0
+
+    entry = state.get(key, {"count": 0, "last_objective": "", "last_command": "", "last_error": ""})
+    entry["count"] = int(entry.get("count", 0)) + 1
+    entry["last_objective"] = redact_text(args.objective or str(entry.get("last_objective", "")))
+    entry["last_command"] = redact_text(args.command or str(entry.get("last_command", "")))
+    entry["last_error"] = redact_text(args.error_text or str(entry.get("last_error", "")))[:1000]
+    state[key] = entry
+    save_failure_state(state)
+
+    count = int(entry["count"])
+    print(f"Failure counter: {key} = {count}")
+    if count >= args.threshold:
+        query = " ".join(detect_domains(" ".join([str(entry["last_objective"]), str(entry["last_command"]), str(entry["last_error"])])))
+        query = " ".join([query, str(entry["last_objective"]), str(entry["last_command"]), str(entry["last_error"])])
+        query = " ".join(tokenize(query)[:30])
+        print("\nThreshold reached. Stop exploratory retries and run incident recall:")
+        print("```bash")
+        print(f"python scripts/experience_vault.py recall --mode incident --query {shell_quote(query)}")
+        print("```")
+    return 0
+
+
+def load_review_state() -> dict[str, object]:
+    if not REVIEW_STATE_PATH.exists():
+        return {"turn_count": 0}
+    try:
+        return json.loads(REVIEW_STATE_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {"turn_count": 0}
+
+
+def save_review_state(state: dict[str, object]) -> None:
+    REVIEW_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    REVIEW_STATE_PATH.write_text(json.dumps(state, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def contains_any(text: str, words: list[str]) -> bool:
+    lower = text.lower()
+    return any(word in lower for word in words)
+
+
+def command_review_turn(args: argparse.Namespace) -> int:
+    state = load_review_state()
+    if args.reset:
+        save_review_state({"turn_count": 0})
+        print("Review state reset.")
+        return 0
+
+    turn_count = int(state.get("turn_count", 0)) + 1
+    state["turn_count"] = turn_count
+    save_review_state(state)
+
+    text_parts = [
+        args.user_message or "",
+        args.assistant_summary or "",
+        args.error_text or "",
+        args.context or "",
+    ]
+    combined = redact_text("\n".join(part for part in text_parts if part))
+    domains = detect_domains(combined)
+
+    reasons: list[str] = []
+    recommendations: list[str] = []
+
+    if turn_count >= args.interval:
+        reasons.append(f"turn interval reached ({turn_count}/{args.interval})")
+        recommendations.append("consider project checkpoint archive if meaningful progress occurred")
+        state["turn_count"] = 0
+        save_review_state(state)
+
+    if args.failed or args.error_text:
+        reasons.append("failure or error observed")
+        recommendations.append("create or update an incident record if the failure was diagnosed or reusable")
+
+    if args.incident_recall:
+        reasons.append("incident recall was used")
+        recommendations.append("archive the incident outcome if it changed the plan or resolved a blocker")
+
+    if contains_any(combined, ["完成", "解决", "验证通过", "done", "fixed", "resolved", "passed", "milestone"]):
+        reasons.append("completion or verification signal detected")
+        recommendations.append("create a project checkpoint or knowledge card")
+
+    if contains_any(combined, ["复用", "经验", "下次", "runbook", "knowledge", "lesson", "reusable"]):
+        reasons.append("reusable-knowledge signal detected")
+        recommendations.append("create or update a knowledge card")
+
+    if domains:
+        recommendations.append(f"tag candidate records with domains: {', '.join(domains)}")
+
+    print("# Turn Review")
+    print(f"- turn_count: {turn_count}")
+    print(f"- domains: {', '.join(domains) if domains else 'unknown'}")
+
+    if not reasons:
+        print("- decision: no archive needed")
+        print("- reason: no failure, milestone, interval, or reusable-knowledge signal")
+        return 0
+
+    print("- decision: archive review recommended")
+    print("\n## Reasons")
+    for reason in reasons:
+        print(f"- {reason}")
+
+    print("\n## Recommendations")
+    for recommendation in recommendations:
+        print(f"- {recommendation}")
+
+    title = args.title or "Turn Review Followup"
+    print("\n## Draft Commands")
+    if args.failed or args.error_text or args.incident_recall:
+        print(f"python scripts/experience_vault.py archive --title {shell_quote(title)} --type incident")
+    if any("knowledge" in r for r in recommendations):
+        print(f"python scripts/experience_vault.py archive --title {shell_quote(title)} --type knowledge")
+    if any("project" in r or "checkpoint" in r for r in recommendations):
+        print(f"python scripts/experience_vault.py archive --title {shell_quote(title)} --type project")
     return 0
 
 
@@ -433,6 +682,41 @@ def build_parser() -> argparse.ArgumentParser:
     recall.add_argument("--mode", choices=sorted(SEARCH_ORDER), default="project-start")
     recall.add_argument("--limit", type=int, default=5)
     recall.set_defaults(func=command_recall)
+
+    fingerprint = sub.add_parser("fingerprint", help="Build an incident fingerprint and recall query")
+    fingerprint.add_argument("--objective")
+    fingerprint.add_argument("--command")
+    fingerprint.add_argument("--exit-code", type=int)
+    fingerprint.add_argument("--error-text")
+    fingerprint.add_argument("--error-file")
+    fingerprint.add_argument("--context")
+    fingerprint.set_defaults(func=command_fingerprint)
+
+    domain_hints = sub.add_parser("domain-hints", help="Detect Experience Vault domain keywords")
+    domain_hints.add_argument("--text")
+    domain_hints.add_argument("--file")
+    domain_hints.set_defaults(func=command_domain_hints)
+
+    fail_track = sub.add_parser("fail-track", help="Track repeated failures and recommend recall")
+    fail_track.add_argument("--key")
+    fail_track.add_argument("--objective")
+    fail_track.add_argument("--command")
+    fail_track.add_argument("--error-text")
+    fail_track.add_argument("--threshold", type=int, default=2)
+    fail_track.add_argument("--reset", action="store_true")
+    fail_track.set_defaults(func=command_fail_track)
+
+    review_turn = sub.add_parser("review-turn", help="Review whether the latest turn should be archived")
+    review_turn.add_argument("--user-message")
+    review_turn.add_argument("--assistant-summary")
+    review_turn.add_argument("--error-text")
+    review_turn.add_argument("--context")
+    review_turn.add_argument("--title")
+    review_turn.add_argument("--interval", type=int, default=5)
+    review_turn.add_argument("--failed", action="store_true")
+    review_turn.add_argument("--incident-recall", action="store_true")
+    review_turn.add_argument("--reset", action="store_true")
+    review_turn.set_defaults(func=command_review_turn)
 
     new = sub.add_parser("new", help="Create a record from a template")
     new.add_argument("--type", choices=sorted(TEMPLATE_BY_TYPE), required=True)
