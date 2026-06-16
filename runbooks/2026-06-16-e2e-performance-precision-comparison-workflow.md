@@ -38,6 +38,8 @@ state.
   - performance metric and expected direction, such as throughput up or step time down
   - precision metric and tolerance, such as `abs(optimized - baseline) <= 0.03`
 - Exact machines, IPs, containers, images, and shared/local mount semantics.
+- Existing image archives or container records under `/mnt/disk2t/l30002999`,
+  if any, before creating or copying new containers.
 - Dataset paths and whether they are shared across machines.
 - Full launch scripts or exact command lines for baseline and optimized runs.
 - Cleanup policy for temporary scripts, ports, Ray clusters, monitor processes, and logs.
@@ -51,6 +53,8 @@ Create a small run directory and record:
 
 - machine list, role of each machine, and private IPs
 - container ID, container name, image, and code hash if code differs
+- whether a previous Docker image archive, container export, or container
+  metadata record already exists under `/mnt/disk2t/l30002999`
 - mounted paths, explicitly marking true shared storage versus same-name local disks
 - dataset train/validation paths
 - model/checkpoint paths
@@ -61,6 +65,26 @@ Create a small run directory and record:
 Important lesson from the 13+59 tests: `/mnt/sfs_turbo` was a real shared NFS
 mount, while `/mnt/disk2t` was only a same-name local disk on each machine.
 Do not assume a path is shared because the string is identical.
+
+Before preparing containers for VERL E2E tests, search local storage for
+previously stored images or container records:
+
+```bash
+find /mnt/disk2t/l30002999 -type f \
+  \( -iname '*.tar' -o -iname '*.tar.gz' -o -iname '*.tgz' -o -iname '*.tar.zst' \
+     -o -iname '*.zst' -o -iname '*.img' -o -iname '*.sif' -o -iname '*.sqsh' \
+     -o -iname '*.docker' \) \
+  -printf '%TY-%Tm-%Td %TH:%TM %s %p\n' 2>/dev/null | sort -r | head -100
+
+find /mnt/disk2t/l30002999 -maxdepth 5 -type f \
+  \( -iname '*image*' -o -iname '*docker*' -o -iname '*container*' \
+     -o -iname '*镜像*' -o -iname '*容器*' \) \
+  -printf '%TY-%Tm-%Td %TH:%TM %s %p\n' 2>/dev/null | sort -r | head -100
+```
+
+If only `docker inspect` or env records exist, treat them as provenance, not as
+loadable images. Use them to identify the expected image tag and mounts, then
+verify with `docker images` or rebuild/copy the actual image if needed.
 
 ### 2. Make Baseline And Optimized Parameters Comparable
 
@@ -84,6 +108,8 @@ longer a like-for-like comparison.
 
 Before launching:
 
+- check whether `/mnt/disk2t/l30002999` already has relevant Docker image
+  archives, container exports, or inspect records from previous VERL tests
 - check NPU processes and memory
 - check CPU/memory pressure
 - check whether other users have jobs
