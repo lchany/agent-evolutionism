@@ -105,6 +105,9 @@ whether to load this archive and create a new container. Do not automatically
 load the archive, replace containers, or copy it to another machine without
 explicit confirmation.
 
+When loading the archive, treat the `.tar` as immutable source material: do not
+delete, move, overwrite, rename, chmod/chown, recompress, or otherwise modify it.
+
 ### 2. Make Baseline And Optimized Parameters Comparable
 
 Before starting a run, diff the final command lines, not just the shell scripts.
@@ -132,6 +135,8 @@ Before launching:
 - if the task is new, ask whether to create a fresh container from
   `/mnt/disk2t/l30002999/container-migration/verl_baseline_migrated_from59_20260612.tar`
   instead of reusing an existing container
+- preserve that source image archive unchanged after any `docker load` or
+  container creation operation
 - check NPU processes and memory
 - check CPU/memory pressure
 - check whether other users have jobs
