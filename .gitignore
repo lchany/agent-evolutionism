@@ -1,4 +1,6 @@
 index/cache/
+__pycache__/
+*.pyc
 *.tmp
 *.bak
 .DS_Store

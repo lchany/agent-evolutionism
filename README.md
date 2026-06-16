@@ -40,16 +40,38 @@ Use placeholders such as `<PASSWORD>`, `<API_KEY>`, `<TOKEN>`, `<PRIVATE_KEY>`, 
 
 ## Core Commands
 
-Search:
+Health check:
+
+```bash
+python scripts/experience_vault.py doctor
+```
+
+Search raw matches:
 
 ```bash
 python scripts/experience_vault.py search --query "mindspeed profiling slow rank" --mode incident
+```
+
+Recall with applicability grouping:
+
+```bash
+python scripts/experience_vault.py recall --query "github ssh permission denied publickey push" --mode incident
 ```
 
 Create a record from a template:
 
 ```bash
 python scripts/experience_vault.py new --type knowledge --title "MindSpeed slow rank profiling"
+```
+
+Create archive drafts:
+
+```bash
+python scripts/experience_vault.py archive \
+  --title "MindSpeed profiling debug" \
+  --type project \
+  --type incident \
+  --type knowledge
 ```
 
 Validate structure and secret hygiene:
@@ -62,6 +84,12 @@ Show Git synchronization status:
 
 ```bash
 python scripts/experience_vault.py git-status
+```
+
+Validate, review, commit, and push:
+
+```bash
+python scripts/experience_vault.py sync --message "Archive MindSpeed profiling debug"
 ```
 
 ## GitHub Setup

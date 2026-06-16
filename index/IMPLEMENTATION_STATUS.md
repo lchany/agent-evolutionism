@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: local first release scaffold complete.
+Status: first release complete with P0/P1 enhancements.
 
 ## Completed
 
@@ -10,15 +10,18 @@ Status: local first release scaffold complete.
 - Record creation helper exists.
 - Structure and secret-pattern validation exists.
 - Git status helper exists.
+- GitHub remote is configured: `git@github.com:lchany/agent-evolutionism.git`.
+- `doctor` command exists for health checks.
+- `recall` command exists for applicability-grouped retrieval.
+- `archive` command exists for multi-record draft creation.
+- `sync` command exists for validate/review/commit/push workflow.
 - Codex `experience-vault` skill exists at `/home/l30002999/.codex/skills/experience-vault`.
 - OpenSpec proposal exists at `/home/l30002999/spec/changes/add-experience-vault`.
+- User-level recall rule exists at `/root/.codex/AGENTS.md`.
 
-## Pending User Configuration
+## Pending
 
-- Create a private GitHub repository named `experience-vault`.
-- Add the GitHub remote to this checkout.
-- Configure authentication using SSH key or an approved GitHub credential flow.
-- Run initial commit and push after review.
+- Use the P0/P1 commands on more real projects and refine templates from observed friction.
 
 ## Deferred Integrations
 
@@ -27,4 +30,3 @@ Status: local first release scaffold complete.
 - Mem0 or Supermemory semantic retrieval.
 
 These are intentionally deferred until the Markdown/Git loop has useful records and eval data.
-
