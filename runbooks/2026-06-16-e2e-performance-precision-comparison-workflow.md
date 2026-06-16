@@ -40,6 +40,9 @@ state.
 - Exact machines, IPs, containers, images, and shared/local mount semantics.
 - Existing image archives or container records under `/mnt/disk2t/l30002999`,
   if any, before creating or copying new containers.
+- For VERL tasks, whether the user wants to load the archived baseline image
+  from `/mnt/disk2t/l30002999/container-migration/verl_baseline_migrated_from59_20260612.tar`
+  and create a fresh container.
 - Dataset paths and whether they are shared across machines.
 - Full launch scripts or exact command lines for baseline and optimized runs.
 - Cleanup policy for temporary scripts, ports, Ray clusters, monitor processes, and logs.
@@ -86,6 +89,22 @@ If only `docker inspect` or env records exist, treat them as provenance, not as
 loadable images. Use them to identify the expected image tag and mounts, then
 verify with `docker images` or rebuild/copy the actual image if needed.
 
+Known local VERL baseline image archive:
+
+```text
+/mnt/disk2t/l30002999/container-migration/verl_baseline_migrated_from59_20260612.tar
+```
+
+Metadata:
+
+- sha256: `570dd32691a9dc1be04f6b1cbda5e7bb4a9b0985c3b67fb952e4ebafe4bec886`
+- repo tag: `verl-0.7.1_vllm-0.18.0_cann-8.5.1_baseline:migrated_from_59_20260612`
+
+At the start of a new VERL task or before starting training, ask the user
+whether to load this archive and create a new container. Do not automatically
+load the archive, replace containers, or copy it to another machine without
+explicit confirmation.
+
 ### 2. Make Baseline And Optimized Parameters Comparable
 
 Before starting a run, diff the final command lines, not just the shell scripts.
@@ -110,6 +129,9 @@ Before launching:
 
 - check whether `/mnt/disk2t/l30002999` already has relevant Docker image
   archives, container exports, or inspect records from previous VERL tests
+- if the task is new, ask whether to create a fresh container from
+  `/mnt/disk2t/l30002999/container-migration/verl_baseline_migrated_from59_20260612.tar`
+  instead of reusing an existing container
 - check NPU processes and memory
 - check CPU/memory pressure
 - check whether other users have jobs
