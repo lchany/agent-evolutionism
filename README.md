@@ -46,11 +46,19 @@ Health check:
 python scripts/experience_vault.py doctor
 ```
 
+Ensure this checkout is up to date before shared use:
+
+```bash
+python scripts/experience_vault.py ensure-latest
+```
+
 Search raw matches:
 
 ```bash
 python scripts/experience_vault.py search --query "mindspeed profiling slow rank" --mode incident
 ```
+
+`search`, `recall`, `distill`, `new`, and `archive` pull the latest remote state by default. Use `--no-pull` only after reviewing local state.
 
 Recall with applicability grouping:
 

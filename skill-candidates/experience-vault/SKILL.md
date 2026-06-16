@@ -19,6 +19,8 @@ GitHub is the intended durable source of truth. Treat the local checkout as a di
 
 Before acting on a non-trivial task, or after a meaningful failure during execution, search Experience Vault for relevant prior experience. Do not blindly apply retrieved steps; classify applicability first.
 
+When multiple projects use the same vault, ensure the local checkout is current before every read or write. The helper commands `search`, `recall`, `distill`, `new`, and `archive` pull by default; use `--no-pull` only after reviewing local state.
+
 ## Workflows
 
 ### 1. Project Start Recall
@@ -27,7 +29,7 @@ Use when the user starts a non-trivial task.
 
 Steps:
 
-1. If the vault is a Git repo with a remote, run `git pull` unless the user asked not to sync.
+1. Ensure the vault is current with `ensure-latest` or a default-pulling helper command unless the user explicitly asked not to sync.
 2. Build a problem fingerprint from the request:
    - Objective
    - Domain and framework
@@ -118,7 +120,7 @@ Use when the user asks to archive, summarize, learn from, or close a project. Al
 
 Steps:
 
-1. Pull latest vault if a remote is configured.
+1. Ensure the vault is current before reviewing or creating drafts.
 2. Run `review-turn` if the archive need is not already explicit.
 3. Run `distill` on the work summary to classify project-specific context, incidents, knowledge, runbooks, and skill candidates.
 4. Create only the recommended archive drafts.

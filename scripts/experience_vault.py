@@ -335,6 +335,10 @@ def print_search_hit(hit: SearchHit) -> None:
 
 
 def command_search(args: argparse.Namespace) -> int:
+    if getattr(args, "pull", True):
+        latest = ensure_latest_for_read()
+        if latest != 0:
+            return latest
     if not tokenize(args.query):
         print("No searchable terms provided.", file=sys.stderr)
         return 2
@@ -349,6 +353,10 @@ def command_search(args: argparse.Namespace) -> int:
 
 
 def command_recall(args: argparse.Namespace) -> int:
+    if getattr(args, "pull", True):
+        latest = ensure_latest_for_read()
+        if latest != 0:
+            return latest
     if not tokenize(args.query):
         print("No searchable terms provided.", file=sys.stderr)
         return 2
@@ -693,6 +701,10 @@ def create_archive_drafts(
 
 
 def command_distill(args: argparse.Namespace) -> int:
+    if getattr(args, "pull", True):
+        latest = ensure_latest_for_write() if args.create_drafts else ensure_latest_for_read()
+        if latest != 0:
+            return latest
     text = read_distill_source(args)
     if not tokenize(text):
         print("No distillable source provided.", file=sys.stderr)
@@ -788,6 +800,10 @@ def render_template(template: str, title: str) -> str:
 
 
 def command_new(args: argparse.Namespace) -> int:
+    if getattr(args, "pull", True):
+        latest = ensure_latest_for_write()
+        if latest != 0:
+            return latest
     template_path, output_dir = TEMPLATE_BY_TYPE[args.type]
     template = (ROOT / template_path).read_text(encoding="utf-8")
     slug = args.slug or slugify(args.title)
@@ -801,6 +817,10 @@ def command_new(args: argparse.Namespace) -> int:
 
 
 def command_archive(args: argparse.Namespace) -> int:
+    if getattr(args, "pull", True):
+        latest = ensure_latest_for_write()
+        if latest != 0:
+            return latest
     try:
         created = create_archive_drafts(args.type, args.title, args.slug, args.force)
     except FileExistsError as exc:
@@ -856,13 +876,17 @@ def run_capture(cmd: list[str], cwd: Path = ROOT) -> subprocess.CompletedProcess
     return subprocess.run(cmd, cwd=cwd, text=True, capture_output=True)
 
 
+def git_status_short() -> subprocess.CompletedProcess[str]:
+    return run_capture(["git", "status", "--short"])
+
+
 def command_git_status(args: argparse.Namespace) -> int:
     if not (ROOT / ".git").exists():
         print("Git repository is not initialized.")
         print("Run: git init")
         print("Then add a private GitHub remote before durable use.")
         return 0
-    result = subprocess.run(["git", "status", "--short"], cwd=ROOT, text=True, capture_output=True)
+    result = git_status_short()
     print(result.stdout.strip() or "Working tree clean.")
     return result.returncode
 
@@ -870,6 +894,57 @@ def command_git_status(args: argparse.Namespace) -> int:
 def has_remote() -> bool:
     result = subprocess.run(["git", "remote"], cwd=ROOT, text=True, capture_output=True)
     return bool(result.stdout.strip())
+
+
+def ensure_latest_for_read() -> int:
+    if not (ROOT / ".git").exists() or not has_remote():
+        return 0
+    pull = subprocess.run(["git", "pull", "--ff-only"], cwd=ROOT, text=True)
+    return pull.returncode
+
+
+def ensure_latest_for_write() -> int:
+    if not (ROOT / ".git").exists() or not has_remote():
+        return 0
+    status = git_status_short()
+    if status.returncode != 0:
+        return status.returncode
+    if status.stdout.strip():
+        print(
+            "Refusing to pull before writing because the vault has local changes. "
+            "Run git-review/sync first, or retry with --no-pull after reviewing.",
+            file=sys.stderr,
+        )
+        return 1
+    pull = subprocess.run(["git", "pull", "--ff-only"], cwd=ROOT, text=True)
+    return pull.returncode
+
+
+def ensure_no_remote_changes_before_sync() -> int:
+    if not (ROOT / ".git").exists() or not has_remote():
+        return 0
+    fetch = subprocess.run(["git", "fetch"], cwd=ROOT, text=True)
+    if fetch.returncode != 0:
+        return fetch.returncode
+    upstream = run_capture(["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])
+    if upstream.returncode != 0:
+        return 0
+    count = run_capture(["git", "rev-list", "--count", f"HEAD..{upstream.stdout.strip()}"])
+    if count.returncode != 0:
+        return count.returncode
+    if int(count.stdout.strip() or "0") > 0:
+        print(
+            "Remote has new commits. Pull/rebase and review before syncing local archive changes.",
+            file=sys.stderr,
+        )
+        return 1
+    return 0
+
+
+def command_ensure_latest(args: argparse.Namespace) -> int:
+    if args.write:
+        return ensure_latest_for_write()
+    return ensure_latest_for_read()
 
 
 def command_doctor(args: argparse.Namespace) -> int:
@@ -884,7 +959,7 @@ def command_doctor(args: argparse.Namespace) -> int:
     checks.append(("vault validation", not validation_errors, "; ".join(validation_errors) if validation_errors else "passed"))
 
     if (ROOT / ".git").is_dir():
-        status = run_capture(["git", "status", "--short"])
+        status = git_status_short()
         clean = status.returncode == 0 and not status.stdout.strip()
         checks.append(("git working tree", clean, "clean" if clean else "has changes"))
 
@@ -903,8 +978,7 @@ def command_git_pull(args: argparse.Namespace) -> int:
     if not has_remote():
         print("No Git remote configured. Add a private GitHub remote before pull/push.")
         return 0
-    result = subprocess.run(["git", "pull", "--ff-only"], cwd=ROOT, text=True)
-    return result.returncode
+    return ensure_latest_for_read()
 
 
 def command_git_review(args: argparse.Namespace) -> int:
@@ -925,10 +999,18 @@ def command_sync(args: argparse.Namespace) -> int:
     if not (ROOT / ".git").exists():
         print("Git repository is not initialized.", file=sys.stderr)
         return 1
-    if args.pull and has_remote():
-        pull = subprocess.run(["git", "pull", "--ff-only"], cwd=ROOT, text=True)
-        if pull.returncode != 0:
-            return pull.returncode
+    if args.pull:
+        status_before_pull = git_status_short()
+        if status_before_pull.returncode != 0:
+            return status_before_pull.returncode
+        if status_before_pull.stdout.strip():
+            remote_check = ensure_no_remote_changes_before_sync()
+            if remote_check != 0:
+                return remote_check
+        else:
+            pull = ensure_latest_for_read()
+            if pull != 0:
+                return pull
 
     errors = validate_structure() + validate_markdown()
     if errors:
@@ -980,13 +1062,15 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("--query", required=True)
     search.add_argument("--mode", choices=sorted(SEARCH_ORDER), default="project-start")
     search.add_argument("--limit", type=int, default=5)
-    search.set_defaults(func=command_search)
+    search.add_argument("--no-pull", dest="pull", action="store_false")
+    search.set_defaults(func=command_search, pull=True)
 
     recall = sub.add_parser("recall", help="Search and group records by applicability")
     recall.add_argument("--query", required=True)
     recall.add_argument("--mode", choices=sorted(SEARCH_ORDER), default="project-start")
     recall.add_argument("--limit", type=int, default=5)
-    recall.set_defaults(func=command_recall)
+    recall.add_argument("--no-pull", dest="pull", action="store_false")
+    recall.set_defaults(func=command_recall, pull=True)
 
     fingerprint = sub.add_parser("fingerprint", help="Build an incident fingerprint and recall query")
     fingerprint.add_argument("--objective")
@@ -1030,21 +1114,24 @@ def build_parser() -> argparse.ArgumentParser:
     distill.add_argument("--slug")
     distill.add_argument("--create-drafts", action="store_true", help="Create recommended archive drafts")
     distill.add_argument("--force", action="store_true")
-    distill.set_defaults(func=command_distill)
+    distill.add_argument("--no-pull", dest="pull", action="store_false")
+    distill.set_defaults(func=command_distill, pull=True)
 
     new = sub.add_parser("new", help="Create a record from a template")
     new.add_argument("--type", choices=sorted(TEMPLATE_BY_TYPE), required=True)
     new.add_argument("--title", required=True)
     new.add_argument("--slug")
     new.add_argument("--force", action="store_true")
-    new.set_defaults(func=command_new)
+    new.add_argument("--no-pull", dest="pull", action="store_false")
+    new.set_defaults(func=command_new, pull=True)
 
     archive = sub.add_parser("archive", help="Create one or more archive drafts")
     archive.add_argument("--title", required=True)
     archive.add_argument("--type", choices=sorted(TEMPLATE_BY_TYPE), action="append", required=True)
     archive.add_argument("--slug")
     archive.add_argument("--force", action="store_true")
-    archive.set_defaults(func=command_archive)
+    archive.add_argument("--no-pull", dest="pull", action="store_false")
+    archive.set_defaults(func=command_archive, pull=True)
 
     validate = sub.add_parser("validate", help="Validate repository structure and hygiene")
     validate.set_defaults(func=command_validate)
@@ -1057,6 +1144,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     git_pull = sub.add_parser("git-pull", help="Pull from configured Git remote")
     git_pull.set_defaults(func=command_git_pull)
+
+    ensure_latest = sub.add_parser("ensure-latest", help="Pull latest vault state before reading or writing")
+    ensure_latest.add_argument("--write", action="store_true", help="Require a clean working tree before pulling")
+    ensure_latest.set_defaults(func=command_ensure_latest)
 
     git_review = sub.add_parser("git-review", help="Show changed files and diff stat")
     git_review.set_defaults(func=command_git_review)
