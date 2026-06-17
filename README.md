@@ -52,6 +52,31 @@ Ensure this checkout is up to date before shared use:
 python scripts/experience_vault.py ensure-latest
 ```
 
+Lifecycle event entrypoints:
+
+```bash
+python scripts/experience_vault.py event project-start \
+  --objective "implement lifecycle recall for the vault" \
+  --query "Experience Vault NanoHermes lifecycle event scheduler"
+
+python scripts/experience_vault.py event command-failed \
+  --objective "push vault changes" \
+  --failed-command "git push" \
+  --exit-code 128 \
+  --error-text "Permission denied (publickey)."
+
+python scripts/experience_vault.py event milestone \
+  --title "Vault lifecycle event workflow" \
+  --summary "Implemented a reusable lifecycle event entrypoint and verified it."
+
+python scripts/experience_vault.py event project-close \
+  --title "Vault lifecycle event workflow" \
+  --summary "Finished the workflow. The lesson is reusable across projects." \
+  --create-drafts
+```
+
+The `event` command is the preferred Hermes/NanoHermes-style wrapper for normal Codex work. It keeps the workflow explicit while reducing missed recall or archive-review steps.
+
 Search raw matches:
 
 ```bash

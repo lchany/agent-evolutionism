@@ -1054,6 +1054,127 @@ def command_redact_check(args: argparse.Namespace) -> int:
     return 0
 
 
+def event_source_text(args: argparse.Namespace) -> str:
+    parts = [
+        args.objective or "",
+        args.query or "",
+        args.summary or "",
+        args.error_text or "",
+        args.context or "",
+    ]
+    return redact_text("\n".join(part for part in parts if part))
+
+
+def event_query(args: argparse.Namespace) -> str:
+    explicit = " ".join(part for part in [args.query, args.objective, args.summary, args.context] if part)
+    domains = detect_domains(redact_text(explicit))
+    query_parts = domains + tokenize(explicit)[:30]
+    seen: set[str] = set()
+    query = " ".join(part for part in query_parts if not (part in seen or seen.add(part)))
+    return query
+
+
+def print_event_header(name: str, args: argparse.Namespace) -> None:
+    print(f"# Experience Vault Event: {name}")
+    if args.title:
+        print(f"- title: {args.title}")
+    if args.objective:
+        print(f"- objective: {redact_text(args.objective)}")
+
+
+def command_event(args: argparse.Namespace) -> int:
+    if args.pull:
+        latest = ensure_latest_for_write() if args.create_drafts else ensure_latest_for_read()
+        if latest != 0:
+            return latest
+
+    print_event_header(args.event_type, args)
+
+    if args.event_type == "project-start":
+        query = event_query(args)
+        if not query:
+            print("No project-start query terms provided.", file=sys.stderr)
+            return 2
+        print("\n## Recall")
+        return command_recall(argparse.Namespace(query=query, mode="project-start", limit=args.limit, pull=False))
+
+    if args.event_type == "command-failed":
+        fp_args = argparse.Namespace(
+            objective=args.objective,
+            command=args.failed_command,
+            exit_code=args.exit_code,
+            error_text=args.error_text,
+            error_file=args.error_file,
+            context=args.context,
+        )
+        fp = build_fingerprint(fp_args)
+        error_excerpt = str(fp.get("error_excerpt") or "")
+        print("\n## Fingerprint")
+        command_fingerprint(fp_args)
+
+        print("\n## Failure Tracking")
+        fail_code = command_fail_track(
+            argparse.Namespace(
+                key=args.key,
+                objective=args.objective,
+                command=args.failed_command,
+                error_text=error_excerpt,
+                threshold=args.threshold,
+                reset=False,
+            )
+        )
+        if fail_code != 0:
+            return fail_code
+
+        query = str(fp.get("recall_query") or "")
+        if query:
+            print("\n## Incident Recall")
+            return command_recall(argparse.Namespace(query=query, mode="incident", limit=args.limit, pull=False))
+        print("\nNo incident recall query could be built.")
+        return 0
+
+    if args.event_type in {"milestone", "project-close"}:
+        title = args.title or ("Project Close" if args.event_type == "project-close" else "Project Milestone")
+        failed = bool(args.error_text or args.error_file)
+        print("\n## Archive Review")
+        review_code = command_review_turn(
+            argparse.Namespace(
+                user_message=args.user_message,
+                assistant_summary=args.summary,
+                error_text=args.error_text,
+                context=args.context,
+                title=title,
+                interval=args.interval,
+                failed=failed,
+                incident_recall=args.incident_recall,
+                reset=False,
+            )
+        )
+        if review_code != 0:
+            return review_code
+
+        source = event_source_text(args)
+        if tokenize(source) or args.file:
+            print("\n## Distill")
+            return command_distill(
+                argparse.Namespace(
+                    title=title,
+                    source=source,
+                    file=args.file,
+                    slug=args.slug,
+                    create_drafts=args.create_drafts,
+                    force=args.force,
+                    pull=False,
+                )
+            )
+
+        print("\nNo distillable summary provided. Add --summary or --file to classify archive destinations.")
+        return 0
+
+    print(f"Unsupported event type: {args.event_type}", file=sys.stderr)
+    return 2
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1162,6 +1283,34 @@ def build_parser() -> argparse.ArgumentParser:
     redact = sub.add_parser("redact-check", help="Scan a file for obvious secret patterns")
     redact.add_argument("path")
     redact.set_defaults(func=command_redact_check)
+
+    event = sub.add_parser("event", help="Run a lifecycle event workflow")
+    event.add_argument(
+        "event_type",
+        choices=["project-start", "command-failed", "milestone", "project-close"],
+        help="Lifecycle event to process",
+    )
+    event.add_argument("--title")
+    event.add_argument("--objective")
+    event.add_argument("--query")
+    event.add_argument("--summary")
+    event.add_argument("--user-message")
+    event.add_argument("--context")
+    event.add_argument("--file", help="Additional source file for milestone or project-close distillation")
+    event.add_argument("--failed-command")
+    event.add_argument("--exit-code", type=int)
+    event.add_argument("--error-text")
+    event.add_argument("--error-file")
+    event.add_argument("--key", help="Failure tracking key")
+    event.add_argument("--threshold", type=int, default=2)
+    event.add_argument("--interval", type=int, default=5)
+    event.add_argument("--limit", type=int, default=5)
+    event.add_argument("--incident-recall", action="store_true")
+    event.add_argument("--create-drafts", action="store_true", help="Create recommended archive drafts after distillation")
+    event.add_argument("--slug")
+    event.add_argument("--force", action="store_true")
+    event.add_argument("--no-pull", dest="pull", action="store_false")
+    event.set_defaults(func=command_event, pull=True)
 
     return parser
 

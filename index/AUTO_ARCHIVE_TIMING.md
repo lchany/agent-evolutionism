@@ -9,6 +9,47 @@ The design is inspired by Hermes-style turn review:
 3. Recall prior incidents when the failure fingerprint crosses a threshold.
 4. Recommend archive drafts when a milestone, reusable lesson, or resolved incident appears.
 
+## Lifecycle Events
+
+Prefer the unified event command during normal Codex work. It mirrors the NanoHermes idea of routing loop events into background review tasks, but keeps execution explicit and reviewable.
+
+Project start:
+
+```bash
+python scripts/experience_vault.py event project-start \
+  --objective "<current objective>" \
+  --query "<task keywords>"
+```
+
+Command failure:
+
+```bash
+python scripts/experience_vault.py event command-failed \
+  --objective "<current objective>" \
+  --failed-command "<failed command>" \
+  --exit-code "<exit code>" \
+  --error-text "<key error lines>"
+```
+
+Meaningful milestone:
+
+```bash
+python scripts/experience_vault.py event milestone \
+  --title "<archive title>" \
+  --summary "<what changed, what was learned, verification status>"
+```
+
+Project close:
+
+```bash
+python scripts/experience_vault.py event project-close \
+  --title "<archive title>" \
+  --summary "<final result, reusable lessons, incidents, verification>" \
+  --create-drafts
+```
+
+Use the lower-level commands below when you need to inspect or override one step of the event workflow.
+
 ## In-Progress Recall
 
 Use `fingerprint` when a failure has enough context to describe:

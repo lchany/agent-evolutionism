@@ -23,6 +23,43 @@ When multiple projects use the same vault, ensure the local checkout is current 
 
 ## Workflows
 
+### 0. Lifecycle Event Entry
+
+Prefer the unified lifecycle entrypoint during normal Codex work. It applies the lower-level recall, failure tracking, archive review, and distillation commands in the right order.
+
+Project start:
+
+```bash
+python /home/l30002999/experience-vault/scripts/experience_vault.py event project-start \
+  --objective "<current objective>" \
+  --query "<task keywords>"
+```
+
+Command failure:
+
+```bash
+python /home/l30002999/experience-vault/scripts/experience_vault.py event command-failed \
+  --objective "<current objective>" \
+  --failed-command "<failed command>" \
+  --exit-code "<exit code>" \
+  --error-text "<key error lines>"
+```
+
+Milestone or project close:
+
+```bash
+python /home/l30002999/experience-vault/scripts/experience_vault.py event milestone \
+  --title "<archive title>" \
+  --summary "<work summary>"
+
+python /home/l30002999/experience-vault/scripts/experience_vault.py event project-close \
+  --title "<archive title>" \
+  --summary "<final result and reusable lessons>" \
+  --create-drafts
+```
+
+The lower-level commands remain available for manual inspection and debugging.
+
 ### 1. Project Start Recall
 
 Use when the user starts a non-trivial task.
