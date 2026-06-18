@@ -1,6 +1,6 @@
 ---
 name: experience-vault
-description: Use this skill to preserve and reuse project experience through a GitHub-backed Markdown vault. Trigger when starting a non-trivial project, debugging, deployment, NPU/Ascend/CANN/MindSpeed/VERL/profiling/training work, SSH or Docker troubleshooting, execution failures, repeated failed attempts, user requests to recall prior experience, project archival, knowledge extraction, runbook promotion, Codex skill candidate creation, or future EvoSkill/GEPA optimization planning.
+description: Use this skill to preserve and reuse project experience through a GitHub-backed Markdown vault. Trigger when starting a non-trivial project, debugging, deployment, NPU/Ascend/CANN/MindSpeed/VERL/profiling/training work, SSH or Docker troubleshooting, execution failures, repeated failed attempts, user requests to recall prior experience, project archival, knowledge extraction, runbook promotion, agent skill candidate creation, or future EvoSkill/GEPA optimization planning.
 ---
 
 # Experience Vault
@@ -25,7 +25,7 @@ When multiple projects use the same vault, ensure the local checkout is current 
 
 ### 0. Lifecycle Event Entry
 
-Prefer the unified lifecycle entrypoint during normal Codex work. It applies the lower-level recall, failure tracking, archive review, and distillation commands in the right order.
+Prefer the unified lifecycle entrypoint during normal agent work. It applies the lower-level recall, failure tracking, archive review, and distillation commands in the right order.
 
 Project start:
 
@@ -55,6 +55,7 @@ python /home/l30002999/experience-vault/scripts/experience_vault.py event milest
 python /home/l30002999/experience-vault/scripts/experience_vault.py event project-close \
   --title "<archive title>" \
   --summary "<final result and reusable lessons>" \
+  --verified \
   --create-drafts
 ```
 
@@ -155,11 +156,13 @@ python /home/l30002999/experience-vault/scripts/experience_vault.py fail-track \
 
 Use when the user asks to archive, summarize, learn from, or close a project. Also use after meaningful milestones, verified fixes, incident recall outcomes, or reusable lessons.
 
+Do not promote a newly diagnosed root cause into reusable experience until the fix has been tested. Unverified findings may be kept as project checkpoints or pending hypotheses, but not as durable incident, knowledge, runbook, or skill-candidate records.
+
 Steps:
 
 1. Ensure the vault is current before reviewing or creating drafts.
 2. Run `review-turn` if the archive need is not already explicit.
-3. Run `distill` on the work summary to classify project-specific context, incidents, knowledge, runbooks, and skill candidates.
+3. Run `distill` on the work summary to classify project-specific context, incidents, knowledge, runbooks, and skill candidates. Use `--verified` only when there is actual test or validation evidence.
 4. Create only the recommended archive drafts.
 5. Validate the vault.
 6. Show generated files and Git diff/status.
@@ -175,7 +178,8 @@ python /home/l30002999/experience-vault/scripts/experience_vault.py review-turn 
 
 python /home/l30002999/experience-vault/scripts/experience_vault.py distill \
   --title "<archive title>" \
-  --source "<work summary, incident outcome, or source file path>"
+  --source "<work summary, incident outcome, or source file path>" \
+  --verified
 
 python /home/l30002999/experience-vault/scripts/experience_vault.py new \
   --type project \
@@ -202,13 +206,13 @@ projects -> incidents -> knowledge -> runbooks -> skill-candidates -> official s
 
 Rules:
 
-- Promote to `knowledge/` when a lesson is reusable.
-- Promote to `runbooks/` when the procedure is repeatable and has clear boundaries.
-- Promote to `skill-candidates/` only after triggers, inputs, outputs, safety rules, and validation are clear.
+- Promote to `knowledge/` when a lesson is reusable and verified.
+- Promote to `runbooks/` when the procedure is repeatable, verified, and has clear boundaries.
+- Promote to `skill-candidates/` only after triggers, inputs, outputs, safety rules, and verified examples are clear.
 - Keep project-specific details in `projects/`; do not promote one-off project facts into generic knowledge or skills.
 - Use EvoSkill only for candidate generation from mature runbooks and representative examples.
 - Use GEPA/DSPy only for optimizing stable official `SKILL.md` files with eval datasets.
-- Never install or replace active Codex skills without explicit user approval.
+- Never install or replace active agent skills without explicit user approval.
 
 ## Applicability Assessment
 
@@ -269,6 +273,6 @@ On shared servers, the local checkout is not durable. If the vault is missing, c
 
 ## Future Integrations
 
-- EvoSkill: synthesize candidate Codex skills from mature runbooks and representative incidents.
+- EvoSkill: synthesize candidate agent skills from mature runbooks and representative incidents.
 - GEPA/DSPy: optimize stable official skills using `evals/<skill-name>/`.
 - Mem0/Supermemory: add semantic retrieval only after Markdown search becomes insufficient.

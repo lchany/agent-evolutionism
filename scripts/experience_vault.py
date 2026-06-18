@@ -196,6 +196,39 @@ SECRET_PATTERNS = [
     re.compile(r"\b(OPENAI_API_KEY|ANTHROPIC_API_KEY|OPENROUTER_API_KEY|GITHUB_TOKEN|AWS_SECRET_ACCESS_KEY)\b"),
 ]
 
+VERIFICATION_SIGNALS = [
+    "verified",
+    "validated",
+    "tested",
+    "test passed",
+    "tests passed",
+    "passed",
+    "confirmed",
+    "reproduced and fixed",
+    "verification passed",
+    "smoke test",
+    "验证通过",
+    "测试通过",
+    "已验证",
+    "已确认",
+    "实际测试",
+    "复现并修复",
+]
+
+UNVERIFIED_SIGNALS = [
+    "not verified",
+    "not tested",
+    "unverified",
+    "suspected",
+    "hypothesis",
+    "tentative",
+    "未验证",
+    "未测试",
+    "待验证",
+    "疑似",
+    "猜测",
+]
+
 
 @dataclass
 class SearchHit:
@@ -647,19 +680,28 @@ def score_distill_categories(text: str) -> dict[str, int]:
     return scores
 
 
-def distill_decisions(scores: dict[str, int]) -> dict[str, str]:
+def has_verification_evidence(text: str, verified: bool = False) -> bool:
+    if verified:
+        return True
+    lower = text.lower()
+    if any(matches_signal(lower, signal) for signal in UNVERIFIED_SIGNALS):
+        return False
+    return any(matches_signal(lower, signal) for signal in VERIFICATION_SIGNALS)
+
+
+def distill_decisions(scores: dict[str, int], verified: bool) -> dict[str, str]:
     decisions: dict[str, str] = {}
     for record_type, score in scores.items():
         if record_type == "project":
             decisions[record_type] = "recommended" if score >= 1 else "skip"
         elif record_type == "incident":
-            decisions[record_type] = "recommended" if score >= 3 else "skip"
+            decisions[record_type] = "recommended" if score >= 3 and verified else "skip"
         elif record_type == "runbook":
-            decisions[record_type] = "recommended" if score >= 3 else "skip"
+            decisions[record_type] = "recommended" if score >= 3 and verified else "skip"
         elif record_type == "skill":
-            decisions[record_type] = "consider" if score >= 3 else "skip"
+            decisions[record_type] = "consider" if score >= 3 and verified else "skip"
         else:
-            decisions[record_type] = "recommended" if score >= 2 else "skip"
+            decisions[record_type] = "recommended" if score >= 2 and verified else "skip"
     return decisions
 
 
@@ -715,7 +757,8 @@ def command_distill(args: argparse.Namespace) -> int:
 
     domains = detect_domains(text)
     scores = score_distill_categories(text)
-    decisions = distill_decisions(scores)
+    verified = has_verification_evidence(text, getattr(args, "verified", False))
+    decisions = distill_decisions(scores, verified)
     selected = [
         record_type
         for record_type in DISTILL_RECORD_TYPES
@@ -726,6 +769,9 @@ def command_distill(args: argparse.Namespace) -> int:
     print(f"- title: {args.title}")
     print(f"- domains: {', '.join(domains) if domains else 'unknown'}")
     print(f"- source_terms: {len(tokenize(text))}")
+    print(f"- verification_gate: {'passed' if verified else 'not passed'}")
+    if not verified:
+        print("- verification_rule: reusable incidents, knowledge, runbooks, and skill candidates require confirmed test/validation evidence")
     print("\n## Classification")
 
     for record_type in ["project", "incident", "knowledge", "runbook", "skill"]:
@@ -743,14 +789,16 @@ def command_distill(args: argparse.Namespace) -> int:
     print("\n## Hermes-Style Rules Applied")
     print("- Keep project-specific context in projects/ instead of polluting generic knowledge.")
     print("- Promote portable lessons to knowledge/ only when they can transfer across projects.")
-    print("- Promote procedures to runbooks/ only when the sequence is repeatable and verifiable.")
+    print("- Promote procedures to runbooks/ only when the sequence is repeatable and verified.")
+    print("- Do not promote root-cause hypotheses into reusable experience until the fix was actually tested.")
     print("- Treat skill-candidates/ as class-level capabilities, not one-off project summaries.")
     print("- Record environment failures as fixes or setup steps, not permanent tool limitations.")
 
     print("\n## Suggested Commands")
     if selected:
         types = " ".join(f"--type {record_type}" for record_type in selected)
-        print(f"python scripts/experience_vault.py archive --title {shell_quote(args.title)} {types}")
+        verified_flag = " --verified" if any(record_type != "project" for record_type in selected) else ""
+        print(f"python scripts/experience_vault.py archive --title {shell_quote(args.title)} {types}{verified_flag}")
     if decisions["skill"] == "consider":
         skill_slug = slugify(args.title)
         print(f"mkdir -p skill-candidates/{shell_quote(skill_slug)}")
@@ -795,7 +843,7 @@ def render_template(template: str, title: str) -> str:
         template.replace("{{date}}", date.today().isoformat())
         .replace("{{title}}", title)
         .replace("{{skill_name}}", skill_name)
-        .replace("{{description}}", f"Candidate Codex skill for {title}.")
+        .replace("{{description}}", f"Candidate agent skill for {title}.")
     )
 
 
@@ -821,6 +869,14 @@ def command_archive(args: argparse.Namespace) -> int:
         latest = ensure_latest_for_write()
         if latest != 0:
             return latest
+    reusable_types = [record_type for record_type in args.type if record_type != "project"]
+    if reusable_types and not args.verified:
+        print(
+            "Refusing to create reusable archive drafts without --verified. "
+            "Root cause analysis must be tested before incident/knowledge/runbook archival.",
+            file=sys.stderr,
+        )
+        return 2
     try:
         created = create_archive_drafts(args.type, args.title, args.slug, args.force)
     except FileExistsError as exc:
@@ -1164,6 +1220,7 @@ def command_event(args: argparse.Namespace) -> int:
                     slug=args.slug,
                     create_drafts=args.create_drafts,
                     force=args.force,
+                    verified=args.verified,
                     pull=False,
                 )
             )
@@ -1234,6 +1291,7 @@ def build_parser() -> argparse.ArgumentParser:
     distill.add_argument("--file", help="Path to a source file")
     distill.add_argument("--slug")
     distill.add_argument("--create-drafts", action="store_true", help="Create recommended archive drafts")
+    distill.add_argument("--verified", action="store_true", help="Allow reusable archive recommendations after confirmed testing")
     distill.add_argument("--force", action="store_true")
     distill.add_argument("--no-pull", dest="pull", action="store_false")
     distill.set_defaults(func=command_distill, pull=True)
@@ -1250,6 +1308,7 @@ def build_parser() -> argparse.ArgumentParser:
     archive.add_argument("--title", required=True)
     archive.add_argument("--type", choices=sorted(TEMPLATE_BY_TYPE), action="append", required=True)
     archive.add_argument("--slug")
+    archive.add_argument("--verified", action="store_true", help="Required for incident, knowledge, or runbook drafts")
     archive.add_argument("--force", action="store_true")
     archive.add_argument("--no-pull", dest="pull", action="store_false")
     archive.set_defaults(func=command_archive, pull=True)
@@ -1306,6 +1365,7 @@ def build_parser() -> argparse.ArgumentParser:
     event.add_argument("--interval", type=int, default=5)
     event.add_argument("--limit", type=int, default=5)
     event.add_argument("--incident-recall", action="store_true")
+    event.add_argument("--verified", action="store_true", help="Mark milestone/project-close summary as tested and confirmed")
     event.add_argument("--create-drafts", action="store_true", help="Create recommended archive drafts after distillation")
     event.add_argument("--slug")
     event.add_argument("--force", action="store_true")

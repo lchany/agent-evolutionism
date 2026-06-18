@@ -4,7 +4,7 @@ date: {{date}}
 title: "{{title}}"
 domain: unknown
 topics: []
-confidence: mature
+confidence: tentative
 risk: medium
 source_knowledge: []
 source_incidents: []
@@ -29,4 +29,3 @@ skill_candidate: false
 ## Related Knowledge
 
 ## Skill Promotion Notes
-

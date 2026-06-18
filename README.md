@@ -95,10 +95,11 @@ python scripts/experience_vault.py event milestone \
 python scripts/experience_vault.py event project-close \
   --title "Vault lifecycle event workflow" \
   --summary "Finished the workflow. The lesson is reusable across projects." \
+  --verified \
   --create-drafts
 ```
 
-The `event` command is the preferred Hermes/NanoHermes-style wrapper for normal Codex work. It keeps the workflow explicit while reducing missed recall or archive-review steps.
+The `event` command is the preferred Hermes/NanoHermes-style wrapper for normal agent work. It keeps the workflow explicit while reducing missed recall or archive-review steps.
 
 Search raw matches:
 
@@ -154,7 +155,8 @@ Classify a summary into archive destinations:
 ```bash
 python scripts/experience_vault.py distill \
   --title "GitHub SSH push followup" \
-  --source "Fixed GitHub SSH push failure. Root cause was missing SSH public key. This is reusable for future GitHub push incidents."
+  --source "Fixed GitHub SSH push failure. Root cause was missing SSH public key. Verified by successful git push. This is reusable for future GitHub push incidents." \
+  --verified
 ```
 
 Create recommended archive drafts from the distill result:
@@ -163,6 +165,7 @@ Create recommended archive drafts from the distill result:
 python scripts/experience_vault.py distill \
   --title "GitHub SSH push followup" \
   --file /tmp/work-summary.md \
+  --verified \
   --create-drafts
 ```
 

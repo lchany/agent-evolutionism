@@ -6,7 +6,7 @@ Use `/home/l30002999/experience-vault` as the default project experience system.
 
 Because multiple projects may share this vault, ensure the local checkout is current before every read or write. `event`, `search`, `recall`, `distill`, `new`, and `archive` pull by default; use `--no-pull` only after reviewing local state.
 
-Prefer the lifecycle `event` command during normal Codex work. It wraps search, incident recall, failure tracking, archive review, and distillation in the right order while keeping the output explicit and reviewable.
+Prefer the lifecycle `event` command during normal agent work. It wraps search, incident recall, failure tracking, archive review, and distillation in the right order while keeping the output explicit and reviewable.
 
 For non-trivial work, before planning or executing, recall prior experience:
 
@@ -26,10 +26,12 @@ At meaningful project milestones, after resolving reusable incidents, after veri
 
 ```bash
 python /home/l30002999/experience-vault/scripts/experience_vault.py event milestone --title "<archive title>" --summary "<work summary>"
-python /home/l30002999/experience-vault/scripts/experience_vault.py event project-close --title "<archive title>" --summary "<final summary>" --create-drafts
+python /home/l30002999/experience-vault/scripts/experience_vault.py event project-close --title "<archive title>" --summary "<final summary>" --verified --create-drafts
 ```
 
 Before creating archive drafts, classify the work summary with `distill` so project-specific facts, reusable incidents, general knowledge, runbooks, and skill candidates are separated.
+
+Do not archive a fresh root-cause hypothesis as reusable experience immediately after an error. Only create incident, knowledge, runbook, or skill-candidate records after the fix was actually tested and confirmed. Unverified analysis belongs in the active task context or a project checkpoint marked as unverified.
 
 Never store passwords, API keys, tokens, private keys, raw auth files, or dense sensitive logs in Experience Vault.
 

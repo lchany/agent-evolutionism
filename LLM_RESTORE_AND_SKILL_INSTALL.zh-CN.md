@@ -214,8 +214,11 @@ python "$EXPERIENCE_VAULT_DIR/scripts/experience_vault.py" event milestone \
 python "$EXPERIENCE_VAULT_DIR/scripts/experience_vault.py" event project-close \
   --title "<归档标题>" \
   --summary "<最终结果和可复用经验>" \
+  --verified \
   --create-drafts
 ```
+
+只有在根因、修复方案或可复用经验已经实际测试确认后，才使用 `--verified`。如果还只是推测或未验证结论，不要创建可复用归档草稿。
 
 ## 推送变更回 GitHub
 

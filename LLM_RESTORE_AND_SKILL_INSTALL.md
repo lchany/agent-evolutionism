@@ -198,8 +198,11 @@ At project close:
 python "$EXPERIENCE_VAULT_DIR/scripts/experience_vault.py" event project-close \
   --title "<archive title>" \
   --summary "<final result and reusable lessons>" \
+  --verified \
   --create-drafts
 ```
+
+Use `--verified` only after the root cause, fix, or reusable lesson was actually tested. If the work is still a hypothesis, do not create reusable archive drafts.
 
 Before writing any archive or skill update, pull the latest GitHub state. The helper commands do this by default. Use `--no-pull` only after reviewing local state.
 
