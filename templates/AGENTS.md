@@ -4,23 +4,54 @@
 
 Use `/home/l30002999/experience-vault` as the default project experience system.
 
-For non-trivial work, before planning or executing, search prior experience:
+Because multiple projects may share this vault, ensure the local checkout is current before every read or write. `event`, `search`, `recall`, `distill`, `new`, and `archive` pull by default; use `--no-pull` only after reviewing local state.
+
+Prefer the lifecycle `event` command during normal Codex work. It wraps search, incident recall, failure tracking, archive review, and distillation in the right order while keeping the output explicit and reviewable.
+
+For non-trivial work, before planning or executing, recall prior experience:
 
 ```bash
-python /home/l30002999/experience-vault/scripts/experience_vault.py search --mode project-start --query "<task keywords>"
+python /home/l30002999/experience-vault/scripts/experience_vault.py event project-start --objective "<objective>" --query "<task keywords>"
 ```
 
 For execution failures, repeated failed attempts, SSH/Docker/NPU/CANN/MindSpeed/VERL/profiling/training errors, or when changing strategy, stop and perform incident recall before continuing:
 
 ```bash
-python /home/l30002999/experience-vault/scripts/experience_vault.py search --mode incident --query "<error command framework keywords>"
+python /home/l30002999/experience-vault/scripts/experience_vault.py event command-failed --objective "<objective>" --failed-command "<command>" --exit-code "<exit code>" --error-text "<key error lines>"
 ```
 
 Classify retrieved records as directly applicable, partially applicable, or not applicable before reusing them.
 
-At meaningful project milestones or project close, archive reusable experience into the vault and push after validation and review.
+At meaningful project milestones, after resolving reusable incidents, after verification, or at project close, review whether to archive:
+
+```bash
+python /home/l30002999/experience-vault/scripts/experience_vault.py event milestone --title "<archive title>" --summary "<work summary>"
+python /home/l30002999/experience-vault/scripts/experience_vault.py event project-close --title "<archive title>" --summary "<final summary>" --create-drafts
+```
+
+Before creating archive drafts, classify the work summary with `distill` so project-specific facts, reusable incidents, general knowledge, runbooks, and skill candidates are separated.
 
 Never store passwords, API keys, tokens, private keys, raw auth files, or dense sensitive logs in Experience Vault.
+
+## Project Memory
+
+Use `$project-memory` for non-trivial project work, context compaction recovery, user corrections, and durable project-specific facts.
+
+Maintain `<project>/PROJECT_MEMORY.md` for facts that belong to one project, such as dataset roots, output directories, container names, experiment configuration, machine constraints, current task state, user corrections, and invalidated assumptions.
+
+At the start of project work, after context compaction, or when resuming a task, read `PROJECT_MEMORY.md` if it exists before relying on old summaries. Treat `User Corrections` and `Invalidated Assumptions` as higher priority than prior assistant conclusions.
+
+When the user corrects an assistant conclusion, update `PROJECT_MEMORY.md` with both the correct value and the wrong assumption that must not be reused. Do not store raw logs or dense command output there; store durable conclusions and evidence pointers instead.
+
+## Shell Output Context Policy
+
+For log/query commands, minimize context impact:
+
+- Prefer `tail`, `rg`, `sed -n`, `jq`, and targeted filters.
+- Do not print full logs, full JSON, full directory trees, or full command output unless explicitly requested.
+- For large outputs, redirect to `/tmp/*.out` and only show relevant excerpts.
+- Use small tool output budgets for exploratory shell commands.
+- Summarize inspected shell output into findings instead of preserving raw output.
 
 ## Python Code Review
 
