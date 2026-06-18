@@ -4,13 +4,13 @@ This document is for an AI agent restoring the Experience Vault project on a new
 
 ## Goal
 
-Restore the GitHub-backed Experience Vault locally, install the bundled Codex skills, install user-level operating rules, and verify the project is ready for reuse.
+Restore the GitHub-backed Experience Vault locally, install the bundled agent skills, install user-level operating rules for the target client, and verify the project is ready for reuse.
 
 ## Source Of Truth
 
 - GitHub repository: `git@github.com:lchany/agent-evolutionism.git`
 - HTTPS fallback: `https://github.com/lchany/agent-evolutionism.git`
-- Default local path: `/home/l30002999/experience-vault`
+- Local path: ask the user first. If the user does not provide a directory, restore under the current working directory as `./experience-vault`.
 
 GitHub is the durable source of truth. Treat local checkouts on shared servers as disposable caches.
 
@@ -19,10 +19,12 @@ GitHub is the durable source of truth. Treat local checkouts on shared servers a
 Use SSH when the machine has GitHub SSH access:
 
 ```bash
-mkdir -p /home/l30002999
-cd /home/l30002999
+WORKSPACE_DIR="${WORKSPACE_DIR:-$(pwd)}"
+mkdir -p "$WORKSPACE_DIR"
+cd "$WORKSPACE_DIR"
 git clone git@github.com:lchany/agent-evolutionism.git experience-vault
-cd experience-vault
+export EXPERIENCE_VAULT_DIR="$WORKSPACE_DIR/experience-vault"
+cd "$EXPERIENCE_VAULT_DIR"
 git checkout main
 git pull --ff-only
 ```
@@ -30,10 +32,12 @@ git pull --ff-only
 If SSH fails with `Permission denied (publickey)`, use HTTPS for read-only restore:
 
 ```bash
-mkdir -p /home/l30002999
-cd /home/l30002999
+WORKSPACE_DIR="${WORKSPACE_DIR:-$(pwd)}"
+mkdir -p "$WORKSPACE_DIR"
+cd "$WORKSPACE_DIR"
 git clone https://github.com/lchany/agent-evolutionism.git experience-vault
-cd experience-vault
+export EXPERIENCE_VAULT_DIR="$WORKSPACE_DIR/experience-vault"
+cd "$EXPERIENCE_VAULT_DIR"
 git checkout main
 git pull --ff-only
 ```
@@ -44,58 +48,72 @@ For future push support, configure a working GitHub SSH key and switch the remot
 git remote set-url origin git@github.com:lchany/agent-evolutionism.git
 ```
 
-## Install Bundled Codex Skills
+## Install Bundled Agent Skills
 
 Bundled custom skills live in:
 
 ```text
-codex-skills/
+agent-skills/
 ├── experience-vault/
 └── project-memory/
 ```
 
-Install them into the current Codex home:
+These are portable `SKILL.md` packages. Do not assume they are Codex-only. Install or adapt them according to the target agent client's skill mechanism.
+
+Client mapping:
+
+- Codex or Codex-compatible clients: copy each skill directory under `<agent-home>/skills/`, and use `AGENTS.md` as user-level rules when supported.
+- Claude Code or clients that use project/user instruction files: reuse the same `SKILL.md` content, but place it in the client's supported skill or instruction location. If the client does not support skill folders, convert the relevant `SKILL.md` workflow into that client's instruction file.
+- Other agent clients: preserve each skill's trigger description, workflow steps, safety rules, and bundled references/scripts; only change the installation path and metadata format required by that client.
+
+Install into an explicit agent home:
 
 ```bash
-cd /home/l30002999/experience-vault
-python scripts/install_codex_skills.py --force
+cd "$EXPERIENCE_VAULT_DIR"
+python scripts/install_agent_skills.py --agent-home <agent-home> --force
 ```
 
 By default the script installs to:
 
 ```text
+$AGENT_HOME/skills
+```
+
+If `AGENT_HOME` is not set, it falls back to:
+
+```text
 $CODEX_HOME/skills
 ```
 
-If `CODEX_HOME` is not set, it installs to:
+If neither variable is set, it installs to:
 
 ```text
 ~/.codex/skills
 ```
 
-To install into an explicit Codex home:
+The `--codex-home` option still works as a backward-compatible alias:
 
 ```bash
-python scripts/install_codex_skills.py --codex-home /home/l30002999/.codex --force
+python scripts/install_agent_skills.py --codex-home <codex-home> --force
 ```
 
 To install only skills and skip user-level rules:
 
 ```bash
-python scripts/install_codex_skills.py --skip-agents --force
+python scripts/install_agent_skills.py --skip-agents --force
 ```
 
 Manual install fallback:
 
 ```bash
-mkdir -p ~/.codex/skills
-cp -R codex-skills/experience-vault ~/.codex/skills/
-cp -R codex-skills/project-memory ~/.codex/skills/
+mkdir -p <client-skill-dir>
+cp -R agent-skills/experience-vault <client-skill-dir>/
+cp -R agent-skills/project-memory <client-skill-dir>/
 ```
 
 ## Install User-Level Rules
 
-The installer copies:
+The installer copies the repository's default user rules:
 
 ```text
 templates/AGENTS.md
@@ -107,10 +125,12 @@ to:
 ~/.codex/AGENTS.md
 ```
 
-For root-run Codex sessions, install to `/root/.codex/AGENTS.md`:
+This path is appropriate for Codex-compatible clients. For other clients, adapt the content of `templates/AGENTS.md` into the client's supported user or project instruction file instead of assuming the filename is valid.
+
+For root-run Codex-compatible sessions, install to `/root/.codex/AGENTS.md`:
 
 ```bash
-python scripts/install_codex_skills.py --codex-home /root/.codex --force
+python scripts/install_agent_skills.py --agent-home /root/.codex --force
 ```
 
 Manual fallback:
@@ -125,16 +145,16 @@ cp templates/AGENTS.md ~/.codex/AGENTS.md
 Run:
 
 ```bash
-python /home/l30002999/experience-vault/scripts/experience_vault.py doctor
-python /home/l30002999/experience-vault/scripts/experience_vault.py validate
+python "$EXPERIENCE_VAULT_DIR/scripts/experience_vault.py" doctor
+python "$EXPERIENCE_VAULT_DIR/scripts/experience_vault.py" validate
 ```
 
 Expected result:
 
 - Vault directory exists.
 - Git repository and remote are configured.
-- User-level `AGENTS.md` exists.
-- Active `experience-vault` skill exists.
+- For Codex-compatible installs, user-level `AGENTS.md` exists.
+- The `experience-vault` skill exists in the target client's skill or instruction location.
 - Vault validation passes.
 
 If `doctor` reports the working tree has changes, inspect before pushing:
@@ -149,7 +169,7 @@ git diff --stat
 At the start of non-trivial work:
 
 ```bash
-python /home/l30002999/experience-vault/scripts/experience_vault.py event project-start \
+python "$EXPERIENCE_VAULT_DIR/scripts/experience_vault.py" event project-start \
   --objective "<objective>" \
   --query "<task keywords>"
 ```
@@ -157,7 +177,7 @@ python /home/l30002999/experience-vault/scripts/experience_vault.py event projec
 When a command fails:
 
 ```bash
-python /home/l30002999/experience-vault/scripts/experience_vault.py event command-failed \
+python "$EXPERIENCE_VAULT_DIR/scripts/experience_vault.py" event command-failed \
   --objective "<objective>" \
   --failed-command "<command>" \
   --exit-code "<exit code>" \
@@ -167,7 +187,7 @@ python /home/l30002999/experience-vault/scripts/experience_vault.py event comman
 At a meaningful milestone:
 
 ```bash
-python /home/l30002999/experience-vault/scripts/experience_vault.py event milestone \
+python "$EXPERIENCE_VAULT_DIR/scripts/experience_vault.py" event milestone \
   --title "<archive title>" \
   --summary "<work summary>"
 ```
@@ -175,7 +195,7 @@ python /home/l30002999/experience-vault/scripts/experience_vault.py event milest
 At project close:
 
 ```bash
-python /home/l30002999/experience-vault/scripts/experience_vault.py event project-close \
+python "$EXPERIENCE_VAULT_DIR/scripts/experience_vault.py" event project-close \
   --title "<archive title>" \
   --summary "<final result and reusable lessons>" \
   --create-drafts
@@ -188,7 +208,7 @@ Before writing any archive or skill update, pull the latest GitHub state. The he
 After creating archives, docs, or skill updates:
 
 ```bash
-cd /home/l30002999/experience-vault
+cd "$EXPERIENCE_VAULT_DIR"
 python scripts/experience_vault.py validate
 git status --short
 git diff --stat

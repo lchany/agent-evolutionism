@@ -1,6 +1,6 @@
 # Experience Vault
 
-Experience Vault is a GitHub-backed Markdown knowledge base for Codex project work.
+Experience Vault is a GitHub-backed Markdown knowledge base for agent project work.
 
 It preserves:
 
@@ -8,7 +8,7 @@ It preserves:
 - Mid-task troubleshooting records in `incidents/`
 - Reusable lessons in `knowledge/`
 - Mature procedures in `runbooks/`
-- Candidate Codex skills in `skill-candidates/`
+- Candidate agent skills in `skill-candidates/`
 - Evaluation datasets in `evals/`
 
 ## Operating Model
@@ -34,17 +34,19 @@ LLM_RESTORE_AND_SKILL_INSTALL.md
 LLM_RESTORE_AND_SKILL_INSTALL.zh-CN.md
 ```
 
-Bundled custom Codex skills are stored in:
+Bundled custom agent skills are stored in:
 
 ```text
-codex-skills/
+agent-skills/
 ```
 
 Install them with:
 
 ```bash
-python scripts/install_codex_skills.py --force
+python scripts/install_agent_skills.py --agent-home <agent-home> --force
 ```
+
+The bundled skills use `SKILL.md` packages. Treat them as portable agent capability descriptions, then map them to the target client's expected skill/rules location.
 
 ## Safety Rules
 
