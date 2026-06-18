@@ -31,6 +31,7 @@ For a new AI agent or new Linux server, start with:
 
 ```text
 LLM_RESTORE_AND_SKILL_INSTALL.md
+LLM_RESTORE_AND_SKILL_INSTALL.zh-CN.md
 ```
 
 Bundled custom Codex skills are stored in:
