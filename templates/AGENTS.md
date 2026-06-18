@@ -33,6 +33,8 @@ Before creating archive drafts, classify the work summary with `distill` so proj
 
 Do not archive a fresh root-cause hypothesis as reusable experience immediately after an error. Only create incident, knowledge, runbook, or skill-candidate records after the fix was actually tested and confirmed. Unverified analysis belongs in the active task context or a project checkpoint marked as unverified.
 
+When the user provides facts, classify scope before storing them. Project-specific facts such as local paths, repo state, machine details, datasets, containers, current task constraints, or one-off preferences belong in project memory or project archives. Only verified cross-project facts should become reusable knowledge or runbooks.
+
 Never store passwords, API keys, tokens, private keys, raw auth files, or dense sensitive logs in Experience Vault.
 
 ## Project Memory

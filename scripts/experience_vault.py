@@ -229,6 +229,57 @@ UNVERIFIED_SIGNALS = [
     "猜测",
 ]
 
+PROJECT_FACT_SIGNALS = [
+    "this project",
+    "current project",
+    "this repo",
+    "current repo",
+    "local path",
+    "dataset",
+    "container",
+    "machine",
+    "server",
+    "environment",
+    "workspace",
+    "当前项目",
+    "本项目",
+    "这个项目",
+    "当前仓库",
+    "本仓库",
+    "路径",
+    "目录",
+    "数据集",
+    "容器",
+    "机器",
+    "服务器",
+    "环境",
+    "工作区",
+]
+
+GENERAL_FACT_SIGNALS = [
+    "general",
+    "reusable",
+    "portable",
+    "across projects",
+    "multiple projects",
+    "all projects",
+    "best practice",
+    "principle",
+    "next time",
+    "always",
+    "should",
+    "通用",
+    "复用",
+    "跨项目",
+    "多个项目",
+    "所有项目",
+    "最佳实践",
+    "原则",
+    "下次",
+    "以后",
+    "应该",
+]
+
 
 @dataclass
 class SearchHit:
@@ -689,19 +740,33 @@ def has_verification_evidence(text: str, verified: bool = False) -> bool:
     return any(matches_signal(lower, signal) for signal in VERIFICATION_SIGNALS)
 
 
-def distill_decisions(scores: dict[str, int], verified: bool) -> dict[str, str]:
+def classify_fact_scope(text: str) -> str:
+    lower = text.lower()
+    project_hits = sum(1 for signal in PROJECT_FACT_SIGNALS if matches_signal(lower, signal))
+    general_hits = sum(1 for signal in GENERAL_FACT_SIGNALS if matches_signal(lower, signal))
+    if project_hits and general_hits:
+        return "mixed"
+    if project_hits:
+        return "project-specific"
+    if general_hits:
+        return "general-reusable"
+    return "unknown"
+
+
+def distill_decisions(scores: dict[str, int], verified: bool, fact_scope: str = "unknown") -> dict[str, str]:
     decisions: dict[str, str] = {}
+    project_only = fact_scope == "project-specific"
     for record_type, score in scores.items():
         if record_type == "project":
             decisions[record_type] = "recommended" if score >= 1 else "skip"
         elif record_type == "incident":
             decisions[record_type] = "recommended" if score >= 3 and verified else "skip"
         elif record_type == "runbook":
-            decisions[record_type] = "recommended" if score >= 3 and verified else "skip"
+            decisions[record_type] = "recommended" if score >= 3 and verified and not project_only else "skip"
         elif record_type == "skill":
-            decisions[record_type] = "consider" if score >= 3 and verified else "skip"
+            decisions[record_type] = "consider" if score >= 3 and verified and not project_only else "skip"
         else:
-            decisions[record_type] = "recommended" if score >= 2 and verified else "skip"
+            decisions[record_type] = "recommended" if score >= 2 and verified and not project_only else "skip"
     return decisions
 
 
@@ -758,7 +823,8 @@ def command_distill(args: argparse.Namespace) -> int:
     domains = detect_domains(text)
     scores = score_distill_categories(text)
     verified = has_verification_evidence(text, getattr(args, "verified", False))
-    decisions = distill_decisions(scores, verified)
+    fact_scope = classify_fact_scope(text)
+    decisions = distill_decisions(scores, verified, fact_scope)
     selected = [
         record_type
         for record_type in DISTILL_RECORD_TYPES
@@ -769,9 +835,14 @@ def command_distill(args: argparse.Namespace) -> int:
     print(f"- title: {args.title}")
     print(f"- domains: {', '.join(domains) if domains else 'unknown'}")
     print(f"- source_terms: {len(tokenize(text))}")
+    print(f"- fact_scope: {fact_scope}")
     print(f"- verification_gate: {'passed' if verified else 'not passed'}")
     if not verified:
         print("- verification_rule: reusable incidents, knowledge, runbooks, and skill candidates require confirmed test/validation evidence")
+    if fact_scope == "project-specific":
+        print("- scope_rule: project-local facts stay in projects/ or PROJECT_MEMORY.md unless explicitly generalized")
+    if fact_scope == "mixed":
+        print("- scope_rule: split mixed facts: keep local details in project memory/projects and reusable principles in knowledge/runbooks")
     print("\n## Classification")
 
     for record_type in ["project", "incident", "knowledge", "runbook", "skill"]:
@@ -788,6 +859,7 @@ def command_distill(args: argparse.Namespace) -> int:
 
     print("\n## Hermes-Style Rules Applied")
     print("- Keep project-specific context in projects/ instead of polluting generic knowledge.")
+    print("- Classify user-provided facts by scope before archiving; project-local facts are not reusable knowledge by default.")
     print("- Promote portable lessons to knowledge/ only when they can transfer across projects.")
     print("- Promote procedures to runbooks/ only when the sequence is repeatable and verified.")
     print("- Do not promote root-cause hypotheses into reusable experience until the fix was actually tested.")

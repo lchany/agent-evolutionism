@@ -117,4 +117,6 @@ Consider `skill-candidates/` only for class-level capabilities with triggers, in
 
 If a failure has only been analyzed but not tested, keep it out of reusable archives. Continue testing, or record a project checkpoint that clearly marks the conclusion as unverified.
 
+When the user provides a fact, first classify its scope. Project-specific facts such as paths, repo state, machine details, dataset locations, or current-task constraints belong in project memory or project archives. Only verified cross-project facts should become reusable knowledge or runbooks.
+
 Do not archive raw secrets, private keys, tokens, passwords, auth files, or dense sensitive logs.

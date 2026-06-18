@@ -158,6 +158,8 @@ Use when the user asks to archive, summarize, learn from, or close a project. Al
 
 Do not promote a newly diagnosed root cause into reusable experience until the fix has been tested. Unverified findings may be kept as project checkpoints or pending hypotheses, but not as durable incident, knowledge, runbook, or skill-candidate records.
 
+When the user provides facts, classify their scope before storing them. Project-specific facts belong in project memory or `projects/`; verified cross-project facts may become `knowledge/` or `runbooks/`; mixed facts should be split.
+
 Steps:
 
 1. Ensure the vault is current before reviewing or creating drafts.

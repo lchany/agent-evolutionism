@@ -21,6 +21,13 @@ Experience Vault uses a two-step learning loop:
 
 Keep project-specific details in `projects/`.
 
+Classify user-provided facts by scope before archiving:
+
+- Project-specific facts: paths, repositories, datasets, containers, machines, local environment, current task state, and one-off preferences. Store these in `PROJECT_MEMORY.md` or `projects/`.
+- General reusable facts: cross-project principles, repeated procedures, best practices, and verified lessons. Store these in `knowledge/` or `runbooks/` only after verification.
+- Mixed facts: split the project-local detail from the reusable principle before creating records.
+- Unknown scope: keep the fact in the active task context until clarified.
+
 Extract to `knowledge/` only when the lesson transfers across projects.
 
 Extract to `incidents/` only when future searches can match the failure signature and the root cause plus fix were tested.

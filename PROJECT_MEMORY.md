@@ -23,6 +23,13 @@
   Source: user correction
   Status: active
 
+- [2026-06-18] User-provided facts must be classified by scope
+  Previous wrong assumption: `A fact provided by the user can be stored directly as durable general experience.`
+  Correct value: `User facts must first be classified as project-specific or generally reusable. Project-specific facts belong in PROJECT_MEMORY.md or project archives; only cross-project, verified facts belong in reusable knowledge/runbooks.`
+  Future rule: Before archiving user facts, explicitly decide whether they are project-local, general reusable, mixed, or unknown.
+  Source: user correction
+  Status: active
+
 ## Invalidated Assumptions
 
 - [2026-06-18] Do not assume `~/.codex/skills` is the only valid skill installation target.
@@ -38,4 +45,9 @@
 - [2026-06-18] Do not assume `/home/l30002999/experience-vault` is the universal restore path.
   Invalidated by: user correction that the target directory may vary by environment and should be user-provided.
   Replacement: Use the user-provided directory, or the current working directory when no directory is provided.
+  Status: active
+
+- [2026-06-18] Do not treat all user-provided facts as general knowledge.
+  Invalidated by: user correction that facts may be project-specific or general.
+  Replacement: Route project-specific facts to project memory or project archives; route only verified cross-project facts to reusable knowledge.
   Status: active
