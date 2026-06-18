@@ -25,6 +25,26 @@ Standard flow:
 6. Review diff.
 7. Commit and push after approval.
 
+## Restore And Skills
+
+For a new AI agent or new Linux server, start with:
+
+```text
+LLM_RESTORE_AND_SKILL_INSTALL.md
+```
+
+Bundled custom Codex skills are stored in:
+
+```text
+codex-skills/
+```
+
+Install them with:
+
+```bash
+python scripts/install_codex_skills.py --force
+```
+
 ## Safety Rules
 
 Do not store:

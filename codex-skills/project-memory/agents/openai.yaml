@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Memory"
+  short_description: "Preserve project facts across compaction"
+  default_prompt: "Use $project-memory to preserve project facts, user corrections, and current task state across context compaction."

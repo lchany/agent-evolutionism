@@ -1,0 +1,4 @@
+interface:
+  display_name: "Experience Vault"
+  short_description: "Recall, archive, and promote project experience"
+  default_prompt: "Use $experience-vault to search prior experience before starting or troubleshooting this task."
