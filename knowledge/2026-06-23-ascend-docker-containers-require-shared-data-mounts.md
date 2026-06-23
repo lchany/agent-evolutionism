@@ -84,4 +84,3 @@ For NPU workflows, also verify NPU visibility with `npu-smi info` inside or via 
 ## Promotion Notes
 
 This is global user experience for Ascend/NPU container workflows. It may later become part of a reusable container-creation runbook or agent skill rule if repeated across projects.
-
