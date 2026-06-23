@@ -40,6 +40,15 @@ Bundled custom agent skills are stored in:
 agent-skills/
 ```
 
+Current bundled skills:
+
+```text
+agent-skills/
+├── ascend-docker-rules/
+├── experience-vault/
+└── project-memory/
+```
+
 Install them with:
 
 ```bash
@@ -47,6 +56,8 @@ python scripts/install_agent_skills.py --agent-home <agent-home> --force
 ```
 
 The bundled skills use `SKILL.md` packages. Treat them as portable agent capability descriptions, then map them to the target client's expected skill/rules location.
+
+Portable hard rules live in `templates/AGENTS.md` and, when trigger reliability matters, in dedicated skills such as `agent-skills/ascend-docker-rules/`. Do not rely on `knowledge/` records alone for rules that must affect future behavior after migration.
 
 ## Safety Rules
 

@@ -54,6 +54,7 @@ Bundled custom skills live in:
 
 ```text
 agent-skills/
+├── ascend-docker-rules/
 ├── experience-vault/
 └── project-memory/
 ```
@@ -107,6 +108,7 @@ Manual install fallback:
 
 ```bash
 mkdir -p <client-skill-dir>
+cp -R agent-skills/ascend-docker-rules <client-skill-dir>/
 cp -R agent-skills/experience-vault <client-skill-dir>/
 cp -R agent-skills/project-memory <client-skill-dir>/
 ```
@@ -126,6 +128,8 @@ to:
 ```
 
 This path is appropriate for Codex-compatible clients. For other clients, adapt the content of `templates/AGENTS.md` into the client's supported user or project instruction file instead of assuming the filename is valid.
+
+`templates/AGENTS.md` is the portable source for user-level hard rules. When restoring to a new client, preserve the `Durable User Rules` section, especially rules that must not depend only on Experience Vault keyword retrieval. The current active rule is: when creating Docker containers for the user's Ascend/NPU, VERL, vLLM-Ascend, CANN, torch_npu, or related shared training workflows, include `/mnt/disk2t` and `/mnt/sfs_turbo` mounts by default and verify both paths inside the container unless the user explicitly overrides the rule.
 
 For root-run Codex-compatible sessions, install to `/root/.codex/AGENTS.md`:
 
@@ -155,6 +159,8 @@ Expected result:
 - Git repository and remote are configured.
 - For Codex-compatible installs, user-level `AGENTS.md` exists.
 - The `experience-vault` skill exists in the target client's skill or instruction location.
+- The `project-memory` and `ascend-docker-rules` skills exist in the target client's skill or instruction location.
+- The user-level rules preserve the `Durable User Rules` section.
 - Vault validation passes.
 
 If `doctor` reports the working tree has changes, inspect before pushing:
@@ -183,6 +189,8 @@ python "$EXPERIENCE_VAULT_DIR/scripts/experience_vault.py" event command-failed 
   --exit-code "<exit code>" \
   --error-text "<key error lines>"
 ```
+
+When the user provides a long-lived rule, hard constraint, or future behavior requirement, such as statements containing "always", "must", "never", "from now on", "以后", "后续", "所有", "必须", "不要", or "默认", do not store it only as `knowledge/`. First promote it into the target client's user-level rules, a dedicated skill, or the relevant project's `PROJECT_MEMORY.md`; then optionally archive supporting evidence in Experience Vault.
 
 At a meaningful milestone:
 

@@ -60,6 +60,7 @@ git remote set-url origin git@github.com:lchany/agent-evolutionism.git
 
 ```text
 agent-skills/
+├── ascend-docker-rules/
 ├── experience-vault/
 └── project-memory/
 ```
@@ -121,6 +122,7 @@ python scripts/install_agent_skills.py --skip-agents --force
 
 ```bash
 mkdir -p <client-skill-dir>
+cp -R agent-skills/ascend-docker-rules <client-skill-dir>/
 cp -R agent-skills/experience-vault <client-skill-dir>/
 cp -R agent-skills/project-memory <client-skill-dir>/
 ```
@@ -140,6 +142,8 @@ templates/AGENTS.md
 ```
 
 这个路径适用于 Codex 兼容客户端。其他客户端不要硬套 `AGENTS.md` 文件名，应把 `templates/AGENTS.md` 的内容转换到该客户端支持的用户级或项目级指令文件中。
+
+`templates/AGENTS.md` 是可迁移的用户级硬规则来源。恢复到新客户端时，必须保留其中的 `Durable User Rules` 段落，尤其是那些不能只依赖 Experience Vault 检索的长期规则。当前包括：创建用户的 Ascend/NPU、VERL、vLLM-Ascend、CANN、torch_npu 或相关共享训练容器时，默认必须挂载 `/mnt/disk2t` 和 `/mnt/sfs_turbo`，并在容器创建后验证两个路径可见，除非用户显式覆盖该规则。
 
 如果需要手动安装：
 
@@ -171,6 +175,8 @@ python "$EXPERIENCE_VAULT_DIR/scripts/experience_vault.py" validate
 - Git remote 已配置。
 - 对 Codex 兼容安装，用户级 `AGENTS.md` 存在。
 - `experience-vault` skill 已存在于目标客户端的 skill 或指令位置。
+- `project-memory` 和 `ascend-docker-rules` skills 已存在于目标客户端的 skill 或指令位置。
+- 用户级规则中保留了 `Durable User Rules` 段落。
 - vault 结构和内容校验通过。
 
 如果 `doctor` 显示 working tree 有变更，先检查再推送：
@@ -189,6 +195,8 @@ python "$EXPERIENCE_VAULT_DIR/scripts/experience_vault.py" event project-start \
   --objective "<当前目标>" \
   --query "<任务关键词>"
 ```
+
+当用户给出长期规则、硬约束或未来行为要求时，例如包含“以后、后续、所有、必须、不要、默认、always、must、never”等信号，不要只把它归档为 `knowledge/`。先把规则写入目标客户端的用户级规则、专门 skill，或相关项目的 `PROJECT_MEMORY.md`，再按需要创建 Experience Vault 记录作为证据。
 
 命令失败时，先做失败指纹、失败计数和事故召回：
 
