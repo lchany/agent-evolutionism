@@ -35,6 +35,27 @@ Do not archive a fresh root-cause hypothesis as reusable experience immediately 
 
 When the user provides facts, classify scope before storing them. Project-specific facts such as local paths, repo state, machine details, datasets, containers, current task constraints, or one-off preferences belong in project memory or project archives. Only verified cross-project facts should become reusable knowledge or runbooks.
 
+## Durable User Rules
+
+Treat user statements that use phrases such as "以后/后续/永远/必须/不要/默认/所有", "remember this", "from now on", "always", "must", or "never" as candidate durable rules, not ordinary experience notes.
+
+Route durable rules by scope before continuing:
+
+- Global behavior constraints that should affect future agents belong in this user rule file or an installed skill.
+- Project-specific constraints belong in that project's `PROJECT_MEMORY.md` under `User Corrections`, `Confirmed Project Facts`, or `Invalidated Assumptions`.
+- Cross-project lessons may also be archived in Experience Vault as supporting `knowledge/` or `runbooks/`, but vault archival alone is not enough for hard constraints that must trigger reliably.
+
+When a user gives a durable rule, record it in the highest-priority active layer first, then optionally create or update the lower-priority evidence record in Experience Vault. If the rule is sensitive, redact secrets before writing it anywhere.
+
+Active global rule: when creating Docker containers for the user's Ascend/NPU, VERL, vLLM-Ascend, CANN, torch_npu, or related shared training workflows, include both shared mounts unless the user explicitly overrides the rule:
+
+```bash
+-v /mnt/disk2t:/mnt/disk2t \
+-v /mnt/sfs_turbo:/mnt/sfs_turbo
+```
+
+After container creation, verify both paths are visible inside the container.
+
 Never store passwords, API keys, tokens, private keys, raw auth files, or dense sensitive logs in Experience Vault.
 
 ## Project Memory

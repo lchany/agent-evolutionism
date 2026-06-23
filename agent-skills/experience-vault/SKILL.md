@@ -1,6 +1,6 @@
 ---
 name: experience-vault
-description: Use this skill to preserve and reuse project experience through a GitHub-backed Markdown vault. Trigger when starting a non-trivial project, debugging, deployment, NPU/Ascend/CANN/MindSpeed/VERL/profiling/training work, SSH or Docker troubleshooting, execution failures, repeated failed attempts, user requests to recall prior experience, project archival, knowledge extraction, runbook promotion, agent skill candidate creation, or future EvoSkill/GEPA optimization planning.
+description: Use this skill to preserve and reuse project experience through a GitHub-backed Markdown vault. Trigger when starting a non-trivial project, debugging, deployment, NPU/Ascend/CANN/MindSpeed/VERL/profiling/training work, SSH or Docker troubleshooting, Docker container setup, execution failures, repeated failed attempts, user-provided future rules or hard constraints, user requests to recall prior experience, project archival, knowledge extraction, runbook promotion, agent skill candidate creation, or future EvoSkill/GEPA optimization planning.
 ---
 
 # Experience Vault
@@ -20,6 +20,8 @@ GitHub is the intended durable source of truth. Treat the local checkout as a di
 Before acting on a non-trivial task, or after a meaningful failure during execution, search Experience Vault for relevant prior experience. Do not blindly apply retrieved steps; classify applicability first.
 
 When multiple projects use the same vault, ensure the local checkout is current before every read or write. The helper commands `search`, `recall`, `distill`, `new`, and `archive` pull by default; use `--no-pull` only after reviewing local state.
+
+Experience Vault is not the highest-priority layer for future-facing hard rules. If the user says a rule should apply later, first route it to active user rules, a dedicated skill, or project memory; then optionally archive the evidence in the vault.
 
 ## Workflows
 
@@ -160,6 +162,12 @@ Do not promote a newly diagnosed root cause into reusable experience until the f
 
 When the user provides facts, classify their scope before storing them. Project-specific facts belong in project memory or `projects/`; verified cross-project facts may become `knowledge/` or `runbooks/`; mixed facts should be split.
 
+When the user provides a hard constraint with future language such as "以后", "后续", "所有", "必须", "不要", "默认", "always", "must", or "never", do not store it only as `knowledge/`. Promote it to the active rule layer first:
+
+- Global behavior rule: update the user rules template or create/update a dedicated skill.
+- Project-specific rule: update that project's `PROJECT_MEMORY.md`.
+- Reusable evidence: archive a supporting `knowledge/` or `runbook` record after the active rule exists.
+
 Steps:
 
 1. Ensure the vault is current before reviewing or creating drafts.
@@ -212,6 +220,7 @@ Rules:
 - Promote to `runbooks/` when the procedure is repeatable, verified, and has clear boundaries.
 - Promote to `skill-candidates/` only after triggers, inputs, outputs, safety rules, and verified examples are clear.
 - Keep project-specific details in `projects/`; do not promote one-off project facts into generic knowledge or skills.
+- Promote hard rules to active user rules or dedicated skills when keyword search would be too unreliable.
 - Use EvoSkill only for candidate generation from mature runbooks and representative examples.
 - Use GEPA/DSPy only for optimizing stable official `SKILL.md` files with eval datasets.
 - Never install or replace active agent skills without explicit user approval.

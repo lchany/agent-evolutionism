@@ -30,6 +30,13 @@
   Source: user correction
   Status: active
 
+- [2026-06-23] Hard future constraints must be promoted above vault search
+  Previous wrong assumption: `A future-facing user rule can be stored as Experience Vault knowledge and reliably found later by keyword retrieval.`
+  Correct value: `Rules phrased as future/always/must/never constraints need to be stored in active user rules, a dedicated skill, or project memory before optional vault archival.`
+  Future rule: For durable user instructions, update the highest-priority active rule layer first; use Experience Vault knowledge as supporting evidence, not the only enforcement layer.
+  Source: user correction
+  Status: active
+
 ## Invalidated Assumptions
 
 - [2026-06-18] Do not assume `~/.codex/skills` is the only valid skill installation target.
@@ -50,4 +57,9 @@
 - [2026-06-18] Do not treat all user-provided facts as general knowledge.
   Invalidated by: user correction that facts may be project-specific or general.
   Replacement: Route project-specific facts to project memory or project archives; route only verified cross-project facts to reusable knowledge.
+  Status: active
+
+- [2026-06-23] Do not rely on keyword recall for hard future rules.
+  Invalidated by: user concern that rules such as future container mount requirements are unlikely to trigger reliably if stored only as knowledge.
+  Replacement: Promote hard future rules into user rules, dedicated skills, or project memory, then archive evidence in Experience Vault if useful.
   Status: active

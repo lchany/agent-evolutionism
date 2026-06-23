@@ -1,6 +1,6 @@
 ---
 name: "project-memory"
-description: "Preserve durable project-specific facts, user corrections, invalidated assumptions, and current task state across context compaction or task resumption. Use when starting or resuming non-trivial project work, before/after context compaction, when the user provides project paths/configuration/preferences, when the user corrects an assistant conclusion, or when shell/log exploration discovers a verified project fact."
+description: "Preserve durable project-specific facts, hard user constraints, user corrections, invalidated assumptions, and current task state across context compaction or task resumption. Use when starting or resuming non-trivial project work, before/after context compaction, when the user provides project paths/configuration/preferences/rules, when the user says future/always/must/never, when the user corrects an assistant conclusion, or when shell/log exploration discovers a verified project fact."
 ---
 
 # Project Memory
@@ -50,6 +50,29 @@ Update `PROJECT_MEMORY.md` when any durable project-specific information appears
 - A phase ends and the current goal, verified state, or next step would otherwise be lost after compaction.
 
 Write concise entries. Prefer evidence pointers over raw output. Do not store secrets, tokens, private keys, auth files, or dense sensitive logs.
+
+## Durable Rule Promotion
+
+When the user states a future-facing constraint, classify it before treating it as ordinary memory. Trigger phrases include "以后", "后续", "所有", "必须", "不要", "默认", "remember this", "from now on", "always", "must", and "never".
+
+Promotion rules:
+
+- Global hard rule: update the active user rules or create/update a dedicated skill so future tasks can trigger without keyword search.
+- Project hard rule: update `<project>/PROJECT_MEMORY.md` immediately and include a short future rule.
+- Evidence or rationale: optionally archive supporting context in Experience Vault, but do not rely on `knowledge/` alone for a rule that must always affect future behavior.
+- Unknown scope: ask one narrow scope question or store it as project memory with `Status: needs-scope` instead of promoting it globally.
+
+Use this pattern for project-local durable rules:
+
+```md
+## Confirmed Project Facts
+
+- [YYYY-MM-DD] <rule title>
+  Rule: <future-facing constraint>
+  Scope: <project, machine, workflow, or global candidate>
+  Source: user instruction
+  Status: active
+```
 
 ## Correction Rules
 
