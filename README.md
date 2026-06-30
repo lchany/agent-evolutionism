@@ -19,6 +19,8 @@ Standard flow:
 
 1. Pull before recall or writing.
 2. Search relevant prior experience.
+   - Treat `projects/` records as source context only. Do not apply another project's implementation plan, environment choices, or optimization tactics to the current project by keyword match.
+   - Reuse across projects requires a verified `knowledge/` or `runbooks/` record with matching applicability and non-applicable cases, or explicit user confirmation.
 3. Work on the current task.
 4. Archive meaningful results.
 5. Validate generated records.

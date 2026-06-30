@@ -24,6 +24,8 @@ python /home/l30002999/experience-vault/scripts/experience_vault.py event comman
 
 Classify retrieved records as directly applicable, partially applicable, or not applicable before reusing them.
 
+Project archives from `projects/` are provenance and context only. Do not apply a project B implementation plan, environment choice, optimization tactic, or command sequence to project A by keyword match. Cross-project reuse requires either a verified `knowledge/` or `runbooks/` record with matching applicability, required inputs, environment/topology, and non-applicable cases, or explicit user confirmation for the current project.
+
 At meaningful project milestones, after resolving reusable incidents, after verification, or at project close, review whether to archive:
 
 ```bash
@@ -36,6 +38,8 @@ Before creating archive drafts, classify the work summary with `distill` so proj
 Do not archive a fresh root-cause hypothesis as reusable experience immediately after an error. Only create incident, knowledge, runbook, or skill-candidate records after the fix was actually tested and confirmed. Unverified analysis belongs in the active task context or a project checkpoint marked as unverified.
 
 When the user provides facts, classify scope before storing them. Project-specific facts such as local paths, repo state, machine details, datasets, containers, current task constraints, or one-off preferences belong in project memory or project archives. Only verified cross-project facts should become reusable knowledge or runbooks.
+
+When recalling prior experience for a new project, never treat `projects/` records as directly reusable implementation guidance. Use them only to locate source evidence or candidate lessons that must be revalidated or promoted through `knowledge/` or `runbooks/` before reuse.
 
 ## Durable User Rules
 

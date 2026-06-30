@@ -2,6 +2,20 @@
 
 ## User Corrections
 
+- [2026-06-29] Cross-project implementation reuse must be blocked by default
+  Previous wrong assumption: `A high-scoring Experience Vault record from project B can be automatically learned and reused as an implementation plan for project A when keywords match.`
+  Correct value: `Project-specific implementation plans, environment choices, and optimization tactics from one project must not be applied to another project by default. They are background evidence only unless the current project matches the recorded applicability boundary, required inputs, environment, topology, and non-applicable cases, or the lesson has been explicitly promoted to verified cross-project knowledge/runbook with clear boundaries.`
+  Future rule: During project-start or incident recall, treat `projects/` records as context and provenance, not directly reusable plans. Reuse only verified `knowledge/` or `runbooks/` records whose applicability and non-applicable cases match the current project; otherwise ask for confirmation or proceed with project-local validation.
+  Source: user correction
+  Status: active
+
+- [2026-06-26] A3 Qwen3-VL-8B verl/FSDP/Yuanrong record is a directly reusable conclusion
+  Previous wrong assumption: `The archived record should be framed like a user-provided operational log that may still need rerun verification before reuse.`
+  Correct value: `The user explicitly stated this record is a directly usable conclusion. Archive wording must treat it as an already debugged, reusable conclusion; only the archival agent did not rerun the training.`
+  Future rule: For this A3 Qwen3-VL-8B verl/FSDP/Yuanrong record, do not downgrade confidence to a tentative note. Preserve it as a verified, directly reusable conclusion while still noting that the archive step itself did not execute a new run.
+  Source: user correction
+  Status: active
+
 - [2026-06-18] Skills are agent-client adaptable, not Codex-only
   Previous wrong assumption: `The bundled skills and restore docs can be framed as Codex-only skills.`
   Correct value: `The skill content is reusable agent capability. Installation and activation must be adapted per agent client, such as Codex, Claude Code, or another client.`
@@ -38,6 +52,16 @@
   Status: active
 
 ## Invalidated Assumptions
+
+- [2026-06-29] Do not automatically apply project B optimization plans to project A.
+  Invalidated by: user correction that cross-project leakage caused project A validation to deviate from expectations.
+  Replacement: Project archives are recall context only; implementation reuse requires a matching applicability boundary or a verified promoted knowledge/runbook record.
+  Status: active
+
+- [2026-06-26] Do not frame the A3 Qwen3-VL-8B verl/FSDP/Yuanrong record as requiring fresh validation before reuse.
+  Invalidated by: user correction that the record is a directly usable conclusion.
+  Replacement: Treat the recorded flow and root causes as verified reusable experience for the stated topology; only revalidate when topology, versions, or parameters materially change.
+  Status: active
 
 - [2026-06-18] Do not assume `~/.codex/skills` is the only valid skill installation target.
   Invalidated by: user correction that skills are not necessarily for Codex.
