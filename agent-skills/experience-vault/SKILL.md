@@ -83,8 +83,9 @@ Steps:
    - `directly applicable`
    - `partially applicable`
    - `not applicable`
-5. Summarize what should be reused and what must not be reused.
-6. Continue planning or implementation.
+5. Apply the cross-project reuse guard: records from `projects/` are context/provenance only and must not be used as direct implementation plans for another project. Reuse requires a verified `knowledge/` or `runbooks/` record whose applicability, required inputs, environment/topology, and non-applicable cases match the current project, or explicit user confirmation.
+6. Summarize what should be reused and what must not be reused.
+7. Continue planning or implementation.
 
 Command:
 
@@ -126,6 +127,8 @@ Steps:
    - `runbooks/`
    - `projects/`
 5. Explain applicability and next action before continuing.
+
+Project archive matches in `projects/` are background evidence only. Do not copy project-specific commands, environment settings, or optimization choices into the current incident unless the current incident matches the recorded boundary or the lesson has been promoted to verified knowledge/runbook form.
 
 Command:
 
@@ -236,6 +239,7 @@ For each retrieved record, answer:
 5. Is the environment compatible?
 6. Is the record current enough?
 7. Is the confidence level sufficient?
+8. Is the record from `projects/`? If yes, treat it as provenance only unless a promoted knowledge/runbook record carries the reusable lesson.
 
 Report:
 

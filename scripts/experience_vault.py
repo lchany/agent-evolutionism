@@ -365,7 +365,9 @@ def iter_markdown(dirs: list[str]) -> list[Path]:
     return paths
 
 
-def classify(score: int, confidence: str) -> str:
+def classify(score: int, confidence: str, record_type: str = "unknown", source_dir: str = "") -> str:
+    if record_type == "project" or source_dir == "projects":
+        return "partially applicable" if score >= 5 else "not applicable"
     if score >= 8 and confidence in {"verified", "mature"}:
         return "directly applicable"
     if score >= 5:
@@ -411,11 +413,16 @@ def search_records(query: str, mode: str, limit: int) -> list[SearchHit]:
 
 def print_search_hit(hit: SearchHit) -> None:
     relative = hit.path.relative_to(ROOT)
-    applicability = classify(hit.score, hit.confidence)
+    source_dir = relative.parts[0] if relative.parts else ""
+    applicability = classify(hit.score, hit.confidence, hit.record_type, source_dir)
     print(f"- {hit.title} ({relative})")
     print(f"  type: {hit.record_type}; confidence: {hit.confidence}; score: {hit.score}")
     print(f"  matched: {', '.join(hit.matched_terms)}")
     print(f"  initial_applicability: {applicability}")
+    if applicability == "directly applicable":
+        print("  reuse_gate: verify applicability, required inputs, environment/topology, and non-applicable cases before adopting")
+    if hit.record_type == "project" or source_dir == "projects":
+        print("  reuse_guard: project archives are context/provenance, not direct implementation plans")
 
 
 def command_search(args: argparse.Namespace) -> int:
@@ -456,7 +463,9 @@ def command_recall(args: argparse.Namespace) -> int:
         "not applicable": [],
     }
     for hit in hits:
-        buckets[classify(hit.score, hit.confidence)].append(hit)
+        relative = hit.path.relative_to(ROOT)
+        source_dir = relative.parts[0] if relative.parts else ""
+        buckets[classify(hit.score, hit.confidence, hit.record_type, source_dir)].append(hit)
 
     for label in ["directly applicable", "partially applicable", "not applicable"]:
         print(f"{label.title()}:")
@@ -467,15 +476,21 @@ def command_recall(args: argparse.Namespace) -> int:
             relative = hit.path.relative_to(ROOT)
             print(f"- {hit.title} ({relative})")
             print(f"  evidence: type={hit.record_type}, confidence={hit.confidence}, matched={', '.join(hit.matched_terms)}")
+            source_dir = relative.parts[0] if relative.parts else ""
+            if label == "directly applicable":
+                print("  reuse_gate: verify applicability boundary, required inputs, environment/topology, and non-applicable cases before adopting")
+            if hit.record_type == "project" or source_dir == "projects":
+                print("  reuse_guard: project archive only; do not apply its implementation plan to another project without an explicit applicability match")
 
     print("\nApplicability checklist:")
     print("- Verify current trigger signals match the record.")
     print("- Confirm required inputs and environment compatibility.")
     print("- Check non-applicable cases before reusing steps.")
+    print("- Treat project archives as context/provenance only; do not copy project-specific implementation choices across projects by keyword match.")
     print("- Treat partial matches as guidance, not a command script.")
 
     if buckets["directly applicable"]:
-        print("\nNext action: use the directly applicable record(s) as the first plan input.")
+        print("\nNext action: use directly applicable record(s) only after confirming their applicability boundary matches the current project.")
     elif buckets["partially applicable"]:
         print("\nNext action: adapt only the reusable parts from partial matches.")
     else:
