@@ -56,6 +56,8 @@ Active global rule: when creating Docker containers for the user's Ascend/NPU, V
 
 After container creation, verify both paths are visible inside the container.
 
+Active global rule: machine aliases for the user's NPU/VERL/shared training workflows are fixed. When the user says `[机器 1]`, `113.46.23.213`, or `192.168.0.59`, treat them as the same machine. When the user says `[机器 2]`, `113.46.11.243`, or `192.168.0.206`, treat them as the same machine. When the user says `[机器 3]`, `113.46.44.208`, or `192.168.0.13`, treat them as the same machine. When the user says `[机器 4]`, `113.46.36.186`, or `192.168.0.145`, treat them as the same machine. Unless the user says otherwise, “本机” generally means the 59 machine.
+
 Never store passwords, API keys, tokens, private keys, raw auth files, or dense sensitive logs in Experience Vault.
 
 ## Project Memory

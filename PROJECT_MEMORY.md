@@ -2,6 +2,13 @@
 
 ## User Corrections
 
+- [2026-07-01] Machine alias mapping for NPU/VERL workflows
+  Previous wrong assumption: `Machine references such as [机器 1], [机器 2], [机器 3], [机器 4], IPs, or “本机” need to be reinterpreted or re-asked each time.`
+  Correct value: `[机器 1]` means the same machine as `113.46.23.213` or `192.168.0.59`; `[机器 2]` means the same machine as `113.46.11.243` or `192.168.0.206`; `[机器 3]` means the same machine as `113.46.44.208` or `192.168.0.13`; `[机器 4]` means the same machine as `113.46.36.186` or `192.168.0.145`; “本机” generally means the 59 machine unless the user says otherwise.`
+  Future rule: For NPU/VERL/shared training workflows, resolve these aliases automatically and do not ask again unless the current task gives conflicting host information.
+  Source: user instruction
+  Status: active
+
 - [2026-06-29] Cross-project implementation reuse must be blocked by default
   Previous wrong assumption: `A high-scoring Experience Vault record from project B can be automatically learned and reused as an implementation plan for project A when keywords match.`
   Correct value: `Project-specific implementation plans, environment choices, and optimization tactics from one project must not be applied to another project by default. They are background evidence only unless the current project matches the recorded applicability boundary, required inputs, environment, topology, and non-applicable cases, or the lesson has been explicitly promoted to verified cross-project knowledge/runbook with clear boundaries.`
